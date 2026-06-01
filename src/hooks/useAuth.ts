@@ -25,7 +25,12 @@ export function useAuth() {
           return
         }
 
-        const { data, error: sessionError } = await supabaseClient.auth.getSession()
+        // 5 saniyelik timeout — Supabase yavaş olursa sonsuz yükleme önlenir
+        const sessionPromise = supabaseClient.auth.getSession()
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Supabase getSession zaman aşımı (5s)')), 5000)
+        )
+        const { data, error: sessionError } = await Promise.race([sessionPromise, timeoutPromise])
         if (sessionError) {
           console.error("Supabase getSession hatası:", sessionError)
           return
@@ -45,6 +50,7 @@ export function useAuth() {
         }
       } catch (err) {
         console.error("initializeAuth beklenmeyen hata:", err)
+        setLoading(false) // timeout veya hata olursa kesinlikle loading'i kapat
       } finally {
         setLoading(false)
       }
