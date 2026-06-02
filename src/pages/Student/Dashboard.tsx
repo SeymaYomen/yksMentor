@@ -1,0 +1,213 @@
+import React from 'react'
+import Card from '../../components/ui/Card'
+import TaskList from '../../components/student/TaskList'
+import PerformanceForm from '../../components/student/PerformanceForm'
+import StudentPerformanceChart from '../../components/student/StudentPerformanceChart'
+import { useAuth } from '../../hooks/useAuth'
+import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+
+import React, { useEffect, useState } from 'react'
+import Card from '../../components/ui/Card'
+import TaskList from '../../components/student/TaskList'
+import PerformanceForm from '../../components/student/PerformanceForm'
+import StudentPerformanceChart from '../../components/student/StudentPerformanceChart'
+import { useAuth } from '../../hooks/useAuth'
+import { useMeetings, Meeting } from '../../hooks/useMeetings'
+import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+
+export default function StudentDashboard() {
+  const { user } = useAuth()
+  const studentId = user?.id || ''
+  const [mentorName, setMentorName] = useState<string | null>(null)
+  
+  // Görüşmeleri yükle
+  const { meetings } = useMeetings('student', studentId)
+  const [nextMeeting, setNextMeeting] = useState<Meeting | null>(null)
+
+  useEffect(() => {
+    if (user?.mentor_id && isSupabaseConfigured && supabase) {
+      supabase.from('profiles').select('username').eq('id', user.mentor_id).single()
+        .then(({ data }) => {
+          if (data) setMentorName(data.username)
+        })
+    }
+  }, [user])
+
+  // Gelecek tarihli en yakın görüşmeyi bul
+  useEffect(() => {
+    if (meetings && meetings.length > 0) {
+      const now = new Date()
+      const future = meetings
+        .filter(m => m.status === 'scheduled' && m.scheduled_at && new Date(m.scheduled_at) >= now)
+        .sort((a, b) => new Date(a.scheduled_at!).getTime() - new Date(b.scheduled_at!).getTime())
+      
+      if (future.length > 0) {
+        setNextMeeting(future[0])
+      } else {
+        setNextMeeting(null)
+      }
+    } else {
+      setNextMeeting(null)
+    }
+  }, [meetings])
+
+  // Mock net hedefleri ve güncel net özeti (gerçek veriden beslenebilir)
+  const mockTargetTyt = 95
+  const mockTargetAyt = 68
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+      {/* 1. Üst Karşılama Kahramanı */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-6 md:p-8 text-white shadow-xl">
+        <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-15 hidden md:block">
+          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" fill="currentColor">
+            <polygon points="0,100 100,0 100,100" />
+          </svg>
+        </div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+              🚀 YKS Hedefine Hazırlanıyor
+            </span>
+            <h2 className="text-3xl font-black tracking-tight">
+              Selam, {user?.username || 'Geleceğin Üniversitelisi'} 👋
+            </h2>
+            <p className="text-blue-100/90 text-sm max-w-xl">
+              "Başarı, her gün tekrarlanan küçük çabaların toplamıdır." Bugün hedeflerini tamamlamaya ve hayaline bir adım daha yaklaşmaya hazır mısın?
+            </p>
+          </div>
+
+          <div className="flex gap-3 shrink-0">
+            {mentorName && (
+              <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-lg">👨‍🏫</div>
+                <div>
+                  <div className="text-[10px] text-blue-200/90 font-bold uppercase tracking-wider">Rehber Mentorun</div>
+                  <div className="font-bold text-sm">{mentorName}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Grid Yapısı */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* SOL BLOK: Sıradaki Görüşme & İstatistikler */}
+        <div className="lg:col-span-8 space-y-6">
+          
+          {/* Sıradaki Görüşme Kartı */}
+          <Card className="border-t-4 border-t-indigo-500 overflow-hidden relative">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+              Sıradaki Mentor Görüşmen
+            </h3>
+
+            {nextMeeting ? (
+              <div className="bg-gradient-to-br from-indigo-50/50 to-purple-50/30 border border-indigo-100/60 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-3">
+                  <div className="font-bold text-indigo-900 text-lg">{nextMeeting.title}</div>
+                  
+                  <div className="flex flex-wrap gap-3">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-indigo-100 rounded-xl text-xs font-semibold text-indigo-700 shadow-sm">
+                      📅 {nextMeeting.scheduled_at ? new Date(nextMeeting.scheduled_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) : ''}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-indigo-100 rounded-xl text-xs font-semibold text-indigo-700 shadow-sm">
+                      ⏰ {nextMeeting.scheduled_at ? new Date(nextMeeting.scheduled_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </span>
+                  </div>
+
+                  {nextMeeting.description && (
+                    <p className="text-sm text-gray-500 italic">" {nextMeeting.description} "</p>
+                  )}
+                </div>
+
+                {nextMeeting.meeting_url ? (
+                  <a
+                    href={nextMeeting.meeting_url.startsWith('http') ? nextMeeting.meeting_url : `https://${nextMeeting.meeting_url}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl text-sm font-bold shadow-md hover:opacity-90 active:scale-95 transition-all"
+                  >
+                    🚀 Toplantıya Katıl
+                  </a>
+                ) : (
+                  <span className="px-4 py-2 bg-gray-100 text-gray-400 rounded-xl text-xs font-medium self-start md:self-auto">Görüşme linki henüz eklenmemiş</span>
+                )}
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-2xl p-6 text-center border border-dashed border-gray-200">
+                <p className="text-gray-500 font-medium text-sm">📅 Planlanmış yaklaşan bir görüşmeniz bulunmuyor.</p>
+                <p className="text-gray-400 text-xs mt-1">Öğretmeniniz görüşme planladığında burada görünecektir.</p>
+              </div>
+            )}
+          </Card>
+
+          {/* Hızlı Net/Çalışma Giriş Formu */}
+          <Card className="p-6">
+            <div className="mb-4">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                ✍️ Günlük Çalışma & Net Bildirimi
+              </h3>
+              <p className="text-xs text-gray-400">Çalıştığın süreyi ve deneme netlerini gir, rehber öğretmenin anlık görsün.</p>
+            </div>
+            {studentId ? <PerformanceForm studentId={studentId} /> : <div className="text-sm text-gray-400">Giriş yapınız.</div>}
+          </Card>
+
+          {/* Gelişim Grafiği */}
+          <Card className="p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              📈 TYT - AYT & Çalışma Saati Trendi
+            </h3>
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+              <StudentPerformanceChart studentId={studentId} />
+            </div>
+          </Card>
+
+        </div>
+
+        {/* SAĞ BLOK: Görev Listesi & Hedefler */}
+        <div className="lg:col-span-4 space-y-6">
+          
+          {/* TYT - AYT Net Özeti / Hedef Kartı */}
+          <Card className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white border-none">
+            <h3 className="text-md font-bold text-indigo-300 uppercase tracking-wider mb-4">🎯 Net Hedeflerin</h3>
+            
+            <div className="space-y-4">
+              {/* TYT */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="font-semibold text-slate-300">TYT Hedefi</span>
+                  <span className="font-bold text-indigo-400">{mockTargetTyt} Net</span>
+                </div>
+                <div className="w-full bg-slate-800 rounded-full h-2">
+                  <div className="bg-indigo-500 h-2 rounded-full" style={{ width: '75%' }}></div>
+                </div>
+              </div>
+
+              {/* AYT */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="font-semibold text-slate-300">AYT Hedefi</span>
+                  <span className="font-bold text-purple-400">{mockTargetAyt} Net</span>
+                </div>
+                <div className="w-full bg-slate-800 rounded-full h-2">
+                  <div className="bg-purple-500 h-2 rounded-full" style={{ width: '62%' }}></div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Görev Listesi Kartı */}
+          <Card className="p-6">
+            <TaskList studentId={studentId} />
+          </Card>
+
+        </div>
+
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,20 @@
+import React from 'react'
+import { Outlet } from 'react-router-dom'
+import Navbar from './Navbar'
+import Sidebar from './Sidebar'
+import { useAuth } from '../../hooks/useAuth'
+
+export default function DashboardLayout() {
+  const { user } = useAuth()
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50/50 to-pink-50 text-gray-900">
+      <Navbar />
+      <div className="container container-max mx-auto px-4 py-8 flex flex-col md:flex-row gap-6">
+        <Sidebar role={user?.role ?? 'student'} />
+        <main className="flex-1 w-full">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  )
+}
