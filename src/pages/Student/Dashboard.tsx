@@ -23,6 +23,12 @@ export default function StudentDashboard() {
   // Görüşmeleri yükle
   const { meetings } = useMeetings('student', studentId)
   const [nextMeeting, setNextMeeting] = useState<Meeting | null>(null)
+  
+  // Katılım Kodu State'leri
+  const [joinCode, setJoinCode] = useState('')
+  const [joinLoading, setJoinLoading] = useState(false)
+  const [foundTeacher, setFoundTeacher] = useState<any>(null)
+  const { joinTeacher, getTeacherInfoByCode } = useAuth()
 
   useEffect(() => {
     if (user?.mentor_id && isSupabaseConfigured && supabase) {
@@ -78,8 +84,8 @@ export default function StudentDashboard() {
             </p>
           </div>
 
-          <div className="flex gap-3 shrink-0">
-            {mentorName && (
+          <div className="flex flex-col md:flex-row gap-3 shrink-0 items-end md:items-center">
+            {mentorName ? (
               <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-lg">👨‍🏫</div>
                 <div>
@@ -87,10 +93,77 @@ export default function StudentDashboard() {
                   <div className="font-bold text-sm">{mentorName}</div>
                 </div>
               </div>
+            ) : (
+              <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 flex flex-col gap-2">
+                <div className="text-[10px] text-blue-200/90 font-bold uppercase tracking-wider">Henüz Mentorun Yok</div>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Katılım Kodu..." 
+                    className="px-3 py-1.5 rounded-lg bg-white/20 border border-white/30 text-white placeholder-blue-200/50 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 w-32"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value)}
+                  />
+                  <button 
+                    disabled={joinLoading || !joinCode}
+                    onClick={async () => {
+                      setJoinLoading(true);
+                      const res = await getTeacherInfoByCode(joinCode);
+                      setJoinLoading(false);
+                      if (res.data) {
+                        setFoundTeacher(res.data);
+                      } else {
+                        alert("Hata: Bu koda ait bir öğretmen bulunamadı.");
+                      }
+                    }}
+                    className="bg-white text-indigo-600 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-indigo-50 transition-colors disabled:opacity-50"
+                  >
+                    {joinLoading ? '...' : 'Ara'}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Onay Modalı */}
+      {foundTeacher && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Öğretmen Bulundu 🎉</h3>
+            <p className="text-gray-600 text-sm mb-4">
+              <span className="font-semibold text-indigo-600">{foundTeacher.username}</span> adlı öğretmenin sınıfına katılmak üzeresiniz. Bu işlemi onaylıyor musunuz?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button 
+                onClick={() => setFoundTeacher(null)}
+                className="px-4 py-2 rounded-xl text-gray-500 hover:bg-gray-100 text-sm font-medium transition-colors"
+              >
+                İptal
+              </button>
+              <button 
+                onClick={async () => {
+                  setJoinLoading(true)
+                  const res = await joinTeacher(joinCode)
+                  setJoinLoading(false)
+                  if (res.success) {
+                    setFoundTeacher(null)
+                    alert("Başarıyla bağlandın! Sayfayı yeniliyoruz...")
+                    window.location.reload()
+                  } else {
+                    alert("Bir hata oluştu.")
+                  }
+                }}
+                disabled={joinLoading}
+                className="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                Evet, Katıl
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. Grid Yapısı */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

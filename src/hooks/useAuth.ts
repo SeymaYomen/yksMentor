@@ -88,13 +88,6 @@ export function useAuth() {
         throw new Error('Supabase yapılandırılmamış. .env dosyanızı kontrol edin.')
       }
 
-      let mentor_id: string | null = null
-      if (join_code) {
-        const { data: mentorData, error: mentorErr } = await supabaseClient.from('profiles').select('id').eq('join_code', join_code).maybeSingle()
-        if (mentorErr) throw mentorErr
-        if (mentorData && (mentorData as any).id) mentor_id = (mentorData as any).id
-      }
-
       // signUp'a user_metadata ekle; trigger'ın username ve role'ü metadata'dan okuması için
       const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
         email,
@@ -117,13 +110,16 @@ export function useAuth() {
       }
 
       // Trigger tarafından profiles satırı otomatik oluşturulacağı için, buraya sadece admin
-      // değerleri (rol, mentor_id) gönderelim ve trigger bunları tamamlasın.
-      const { data, error } = await supabaseClient.from('profiles').upsert([{ id: authUser.id, username, role, mentor_id }], { onConflict: 'id' }).select().maybeSingle()
+      // değerleri (rol) gönderelim ve trigger bunları tamamlasın.
+      const { data, error } = await supabaseClient.from('profiles').upsert([{ id: authUser.id, username, role }], { onConflict: 'id' }).select().maybeSingle()
       
+      // Kayıt başarılıysa ve kod varsa, RPC ile öğretmene bağlan
+      if (join_code && authUser) {
+        await supabaseClient.rpc('join_teacher_by_code', { p_code: join_code })
+      }
+
       if (error) {
         console.error('Profile upsert error:', error)
-        // RLS hatası (42501) alırsak ama kullanıcı oluştuysa, trigger profili yaratmış olabilir.
-        // Bu durumda mevcut profili çekmeyi deneyebiliriz.
         if (error.code === '42501') {
            const { data: existingProfile } = await supabaseClient.from('profiles').select('*').eq('id', authUser.id).maybeSingle()
            if (existingProfile) {
@@ -136,7 +132,9 @@ export function useAuth() {
         throw error
       }
       
-      const created: any = data
+      // Kayıt sonrası güncel profili çek (öğretmene bağlandıysa mentor_id güncellenmiş olur)
+      const { data: finalProfile } = await supabaseClient.from('profiles').select('*').eq('id', authUser.id).maybeSingle()
+      const created: any = finalProfile || data
       const u: User = { id: created.id, username: created.username, role: created.role, mentor_id: created.mentor_id, join_code: created.join_code }
       localStorage.setItem('yks_user', JSON.stringify(u))
       setUser(u)
@@ -192,6 +190,67 @@ export function useAuth() {
     setUser(null)
   }
 
-  return { user, loading, register, login, logout }
-}
+  // YENİ: Öğrencinin sonradan koda katılması için
+  async function joinTeacher(joinCode: string) {
+    if (!supabaseClient) return { error: new Error('Supabase hatası') }
+    try {
+      const { error } = await supabaseClient.rpc('join_teacher_by_code', { p_code: joinCode })
+      if (error) throw error
 
+      // Başarılı olursa user state'ini güncelle
+      if (user) {
+        const { data: updatedProfile } = await supabaseClient.from('profiles').select('*').eq('id', user.id).maybeSingle()
+        if (updatedProfile) {
+          const u: User = { ...user, mentor_id: updatedProfile.mentor_id }
+          localStorage.setItem('yks_user', JSON.stringify(u))
+          setUser(u)
+        }
+      }
+      return { success: true }
+    } catch (err: any) {
+      return { error: err }
+    }
+  }
+
+  // Öğrencinin kodu sorgulaması (Modal onayı öncesi)
+  async function getTeacherInfoByCode(joinCode: string) {
+    if (!supabaseClient) return { error: new Error('Supabase hatası') }
+    try {
+      const { data, error } = await supabaseClient.rpc('get_teacher_info_by_code', { p_code: joinCode })
+      if (error) throw error
+      return { data }
+    } catch (err: any) {
+      return { error: err }
+    }
+  }
+
+  // Öğretmenin kodunu yenilemesi
+  async function refreshJoinCode() {
+    if (!supabaseClient) return { error: new Error('Supabase hatası') }
+    try {
+      const { data, error } = await supabaseClient.rpc('refresh_join_code')
+      if (error) throw error
+      
+      // Öğretmenin local state'inde kodu güncelle
+      if (user) {
+        const u: User = { ...user, join_code: data }
+        localStorage.setItem('yks_user', JSON.stringify(u))
+        setUser(u)
+      }
+      return { data }
+    } catch (err: any) {
+      return { error: err }
+    }
+  }
+
+  return {
+    user,
+    loading,
+    login,
+    register,
+    logout,
+    joinTeacher,
+    getTeacherInfoByCode,
+    refreshJoinCode
+  }
+} 
