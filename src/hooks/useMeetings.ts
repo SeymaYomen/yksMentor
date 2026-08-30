@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import type { UserRole } from './useAuth'
 
 export type Meeting = {
   id: string
@@ -14,12 +15,18 @@ export type Meeting = {
   profiles?: { username: string } // related profile (student for teacher, teacher for student)
 }
 
-export function useMeetings(role: 'teacher' | 'student', userId: string | undefined) {
+export type ScheduleMeetingInput = Pick<Meeting, 'student_id' | 'title' | 'description' | 'meeting_url' | 'scheduled_at'>
+
+export function useMeetings(role: UserRole | undefined, userId: string | undefined) {
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
 
   async function loadMeetings() {
-    if (!userId || !supabase) return
+    if (!role || !userId || !supabase) {
+      setMeetings([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     
     // Fetch meetings
@@ -46,16 +53,22 @@ export function useMeetings(role: 'teacher' | 'student', userId: string | undefi
     return () => window.removeEventListener('meetings_updated', handleUpdate)
   }, [role, userId])
 
-  async function scheduleMeeting(data: Partial<Meeting>) {
+  async function scheduleMeeting(data: ScheduleMeetingInput) {
     if (!supabase) throw new Error('Supabase not configured')
-    const { error } = await supabase.from('meetings').insert([data])
+    const { error } = await supabase.rpc('schedule_meeting', {
+      p_student_id: data.student_id,
+      p_title: data.title,
+      p_description: data.description,
+      p_meeting_url: data.meeting_url,
+      p_scheduled_at: data.scheduled_at,
+    })
     if (error) throw error
     window.dispatchEvent(new Event('meetings_updated'))
   }
 
   async function updateMeetingStatus(id: string, status: 'scheduled' | 'completed' | 'cancelled') {
     if (!supabase) throw new Error('Supabase not configured')
-    const { error } = await supabase.from('meetings').update({ status }).eq('id', id)
+    const { error } = await supabase.rpc('update_meeting_status', { p_meeting_id: id, p_status: status })
     if (error) throw error
     window.dispatchEvent(new Event('meetings_updated'))
   }

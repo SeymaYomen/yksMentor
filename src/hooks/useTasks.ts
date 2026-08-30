@@ -42,7 +42,12 @@ export function useTasks(studentId?: string) {
 
   async function createTask(student_id: string, title: string, due_date?: string) {
     if (!supabase) throw new Error('Supabase yapılandırılmamış. .env dosyanızı kontrol edin.')
-    const { data, error } = await supabase.from('tasks').insert([{ student_id, title, due_date }]).select().single()
+    const { data, error } = await supabase.rpc('assign_task', {
+      p_student_id: student_id,
+      p_title: title,
+      p_due_date: due_date || null,
+      p_description: null,
+    })
     if (error) throw error
     window.dispatchEvent(new Event('tasks_updated'))
     await fetchTasks()

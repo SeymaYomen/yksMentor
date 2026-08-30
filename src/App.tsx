@@ -8,6 +8,7 @@ import TeacherDashboard from './pages/Teacher/Dashboard'
 import StudentDashboard from './pages/Student/Dashboard'
 import Meetings from './pages/Meetings'
 import NotFound from './pages/NotFound'
+import TeacherInviteActivation from './pages/Auth/TeacherInviteActivation'
 import { PublicRoute, ProtectedRoute } from './components/ProtectedRoute'
 import { useAuth } from './hooks/useAuth'
 
@@ -37,6 +38,7 @@ export default function App() {
         </Route>
 
         <Route element={<DashboardLayout />}>
+          <Route path="/student/activate-teacher" element={<ProtectedRoute requiredRole="student"><TeacherInviteActivation /></ProtectedRoute>} />
           <Route path="/teacher" element={<ProtectedRoute requiredRole="teacher"><TeacherDashboard /></ProtectedRoute>} />
           <Route path="/teacher/meetings" element={<ProtectedRoute requiredRole="teacher"><Meetings /></ProtectedRoute>} />
           

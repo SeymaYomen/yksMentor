@@ -1,11 +1,3 @@
-import React from 'react'
-import Card from '../../components/ui/Card'
-import TaskList from '../../components/student/TaskList'
-import PerformanceForm from '../../components/student/PerformanceForm'
-import StudentPerformanceChart from '../../components/student/StudentPerformanceChart'
-import { useAuth } from '../../hooks/useAuth'
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
-
 import React, { useEffect, useState } from 'react'
 import Card from '../../components/ui/Card'
 import TaskList from '../../components/student/TaskList'
@@ -16,7 +8,7 @@ import { useMeetings, Meeting } from '../../hooks/useMeetings'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 
 export default function StudentDashboard() {
-  const { user } = useAuth()
+  const { user, joinTeacher, getTeacherInfoByCode } = useAuth()
   const studentId = user?.id || ''
   const [mentorName, setMentorName] = useState<string | null>(null)
   
@@ -28,8 +20,6 @@ export default function StudentDashboard() {
   const [joinCode, setJoinCode] = useState('')
   const [joinLoading, setJoinLoading] = useState(false)
   const [foundTeacher, setFoundTeacher] = useState<any>(null)
-  const { joinTeacher, getTeacherInfoByCode } = useAuth()
-
   useEffect(() => {
     if (user?.mentor_id && isSupabaseConfigured && supabase) {
       supabase.from('profiles').select('username').eq('id', user.mentor_id).single()

@@ -11,7 +11,7 @@ import Spinner from '../components/ui/Spinner'
 export default function Meetings() {
   const { user } = useAuth()
   const isTeacher = user?.role === 'teacher'
-  const { meetings, loading, scheduleMeeting, updateMeetingStatus, reload } = useMeetings(user?.role || 'student', user?.id)
+  const { meetings, loading, scheduleMeeting, updateMeetingStatus, reload } = useMeetings(user?.role, user?.id)
   
   const [students, setStudents] = useState<any[]>([])
   const [loadingStudents, setLoadingStudents] = useState(false)
@@ -50,13 +50,11 @@ export default function Meetings() {
     try {
       setSubmitting(true)
       await scheduleMeeting({
-        teacher_id: user!.id,
         student_id: studentId,
         title,
         description,
         meeting_url: url,
         scheduled_at,
-        status: 'scheduled'
       })
       showSuccess('Görüşme planlandı!')
       // Formu temizle

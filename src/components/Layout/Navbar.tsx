@@ -1,10 +1,12 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { UserCircleIcon, ArrowLeftOnRectangleIcon } from '@heroicons/react/24/solid'
+import { ArrowLeftOnRectangleIcon } from '@heroicons/react/24/solid'
 import { useAuth } from '../../hooks/useAuth'
 
 export default function Navbar() {
-  const { user, logout } = useAuth()
+  const { user, loading, logout } = useAuth()
+
+  if (loading || !user) return null
 
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-gray-100">
@@ -15,8 +17,7 @@ export default function Navbar() {
         </Link>
 
         <nav className="flex items-center gap-3">
-          {user ? (
-            <>
+          <>
               <span className="text-sm text-gray-700">Merhaba, {user.username}</span>
               <Link
                 to={user.role === 'teacher' ? '/teacher' : '/student'}
@@ -32,19 +33,7 @@ export default function Navbar() {
                 <ArrowLeftOnRectangleIcon className="w-4 h-4" />
                 Çıkış Yap
               </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="flex items-center gap-2 text-sm text-gray-700 hover:text-blue-600">
-                <UserCircleIcon className="w-5 h-5 text-blue-600" />
-                Giriş
-              </Link>
-              <Link to="/register" className="flex items-center gap-2 text-sm text-gray-700 hover:text-blue-600">
-                <UserCircleIcon className="w-5 h-5 text-blue-600" />
-                Kayıt Ol
-              </Link>
-            </>
-          )}
+          </>
         </nav>
       </div>
     </header>

@@ -12,6 +12,11 @@ export default function PerformanceForm({ studentId }: { studentId: string }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    if (!supabase) {
+      showError('Supabase yapılandırılmamış.')
+      return
+    }
     
     const dHours = Number(dailyHours)
     const tNet = Number(tytNet)

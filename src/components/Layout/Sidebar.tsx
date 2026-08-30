@@ -6,8 +6,9 @@ import {
   CalendarDaysIcon,
   PresentationChartLineIcon 
 } from '@heroicons/react/24/outline'
+import type { UserRole } from '../../hooks/useAuth'
 
-export default function Sidebar({ role = 'student' }: { role?: 'teacher' | 'student' }) {
+export default function Sidebar({ role }: { role: UserRole }) {
   const location = useLocation()
 
   const isActive = (path: string) => {

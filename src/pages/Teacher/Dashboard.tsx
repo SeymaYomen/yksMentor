@@ -8,13 +8,12 @@ import TaskList from '../../components/student/TaskList'
 import Card from '../../components/ui/Card'
 
 export default function TeacherDashboard() {
-  const { user } = useAuth()
+  const { user, refreshJoinCode } = useAuth()
   const teacherId = user?.id
   const [students, setStudents] = useState<any[]>([])
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [isRefreshingCode, setIsRefreshingCode] = useState(false)
-  const { refreshJoinCode } = useAuth()
 
   useEffect(() => {
     if (!teacherId) return
