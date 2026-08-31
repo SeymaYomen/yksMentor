@@ -1,19 +1,43 @@
 import React from 'react'
 import Card from '../ui/Card'
-
-type Student = {
-  id: string
-  username: string
-  join_code?: string
-}
+import Spinner from '../ui/Spinner'
+import type { MentorStudentSummary } from '../../hooks/useMentorStudentSummaries'
+import StudentStatusBadge from './StudentStatusBadge'
 
 type Props = {
-  students: Student[]
+  students: MentorStudentSummary[]
   selectedStudent: string | null
   onSelectStudent: (id: string) => void
+  loading?: boolean
+  error?: Error | null
+  onRetry?: () => void
 }
 
-export default function StudentList({ students, selectedStudent, onSelectStudent }: Props) {
+export default function StudentList({ students, selectedStudent, onSelectStudent, loading, error, onRetry }: Props) {
+  if (loading) {
+    return (
+      <Card className="flex min-h-48 items-center justify-center">
+        <div className="flex items-center gap-3 text-sm text-gray-500">
+          <Spinner /> Öğrenci durumları hazırlanıyor...
+        </div>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 text-center">
+        <div className="font-medium text-red-600">Öğrenci bilgileri yüklenemedi.</div>
+        <p className="mt-1 text-sm text-gray-500">{error.message}</p>
+        {onRetry && (
+          <button type="button" onClick={onRetry} className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+            Tekrar dene
+          </button>
+        )}
+      </Card>
+    )
+  }
+
   if (students.length === 0) {
     return (
       <Card className="text-center p-8">
@@ -34,26 +58,28 @@ export default function StudentList({ students, selectedStudent, onSelectStudent
         {students.map(s => (
           <button
             key={s.id}
+            type="button"
             onClick={() => onSelectStudent(s.id)}
-            className={`w-full text-left px-4 py-3 flex items-center justify-between hover:bg-indigo-50 transition-colors ${
+            className={`w-full px-4 py-3 text-left transition-colors hover:bg-indigo-50 ${
               selectedStudent === s.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : 'border-l-4 border-transparent'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-600 font-bold">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 font-bold text-indigo-600">
                 {s.username.charAt(0).toUpperCase()}
               </div>
-              <div>
-                <div className={`font-medium ${selectedStudent === s.id ? 'text-indigo-700' : 'text-gray-800'}`}>
-                  {s.username}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className={`font-medium ${selectedStudent === s.id ? 'text-indigo-700' : 'text-gray-800'}`}>
+                      {s.username}
+                    </div>
+                    <div className="text-xs text-gray-500">ID: {s.id.slice(0, 8)}...</div>
+                  </div>
+                  <StudentStatusBadge status={s.status} />
                 </div>
-                <div className="text-xs text-gray-500">ID: {s.id.slice(0, 8)}...</div>
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">{s.status.reasons[0]}</p>
               </div>
-            </div>
-            <div className="text-indigo-400">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-              </svg>
             </div>
           </button>
         ))}

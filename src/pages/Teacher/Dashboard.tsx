@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
-import { getStudentsByTeacher } from '../../hooks/useTasks'
+import { useMentorStudentSummaries } from '../../hooks/useMentorStudentSummaries'
 import StudentList from '../../components/teacher/StudentList'
 import AssignTaskForm from '../../components/teacher/AssignTaskForm'
+import MentorSummary from '../../components/teacher/MentorSummary'
 import StudentPerformanceChart from '../../components/student/StudentPerformanceChart'
 import TaskList from '../../components/student/TaskList'
 import Card from '../../components/ui/Card'
@@ -10,23 +11,21 @@ import Card from '../../components/ui/Card'
 export default function TeacherDashboard() {
   const { user, refreshJoinCode } = useAuth()
   const teacherId = user?.id
-  const [students, setStudents] = useState<any[]>([])
+  const { students, loading: studentsLoading, error: studentsError, reload } = useMentorStudentSummaries(teacherId)
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [isRefreshingCode, setIsRefreshingCode] = useState(false)
 
   useEffect(() => {
-    if (!teacherId) return
-    ;(async () => {
-      try {
-        const s = await getStudentsByTeacher(teacherId)
-        setStudents(s || [])
-        if (s && s.length > 0) setSelectedStudent(s[0].id)
-      } catch (err) {
-        console.error(err)
-      }
-    })()
-  }, [teacherId])
+    if (students.length === 0) {
+      setSelectedStudent(null)
+      return
+    }
+
+    if (!selectedStudent || !students.some(student => student.id === selectedStudent)) {
+      setSelectedStudent(students[0].id)
+    }
+  }, [selectedStudent, students])
 
   const selectedStudentData = students.find(s => s.id === selectedStudent)
 
@@ -103,7 +102,10 @@ export default function TeacherDashboard() {
           <StudentList 
             students={students} 
             selectedStudent={selectedStudent} 
-            onSelectStudent={setSelectedStudent} 
+            onSelectStudent={setSelectedStudent}
+            loading={studentsLoading}
+            error={studentsError}
+            onRetry={() => void reload()}
           />
           <AssignTaskForm 
             students={students} 
@@ -130,6 +132,8 @@ export default function TeacherDashboard() {
                     </div>
                   </div>
                 </div>
+
+                {selectedStudentData && <MentorSummary status={selectedStudentData.status} />}
 
                 <div className="mb-2">
                   <h4 className="font-semibold text-gray-700 flex items-center gap-2">
