@@ -6,7 +6,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:status": "node --test tests/studentStatus.test.mjs"
+    "test:status": "node --test tests/studentStatus.test.mjs",
+    "test:meeting-briefing": "node --test tests/meetingBriefing.test.mjs",
+    "test:meeting-security": "node --test tests/meetingSecurityMigration.test.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
