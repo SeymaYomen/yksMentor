@@ -12,6 +12,7 @@ export type Meeting = {
   scheduled_at: string | null
   status: 'scheduled' | 'completed' | 'cancelled'
   created_at: string
+  outcome_summary: string | null
   profiles?: { username: string } // related profile (student for teacher, teacher for student)
 }
 
@@ -20,6 +21,7 @@ export type ScheduleMeetingInput = Pick<Meeting, 'student_id' | 'title' | 'descr
 export function useMeetings(role: UserRole | undefined, userId: string | undefined) {
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
 
   async function loadMeetings() {
     if (!role || !userId || !supabase) {
@@ -28,6 +30,7 @@ export function useMeetings(role: UserRole | undefined, userId: string | undefin
       return
     }
     setLoading(true)
+    setError(null)
     
     // Fetch meetings
     let query = supabase.from('meetings').select('*, profiles!meetings_student_id_fkey(username)')
@@ -41,6 +44,9 @@ export function useMeetings(role: UserRole | undefined, userId: string | undefin
     
     if (!error && data) {
       setMeetings(data as unknown as Meeting[])
+    } else if (error) {
+      console.error('Meetings could not be loaded:', error)
+      setError(new Error(error.message))
     }
     setLoading(false)
   }
@@ -73,5 +79,5 @@ export function useMeetings(role: UserRole | undefined, userId: string | undefin
     window.dispatchEvent(new Event('meetings_updated'))
   }
 
-  return { meetings, loading, scheduleMeeting, updateMeetingStatus, reload: loadMeetings }
+  return { meetings, loading, error, scheduleMeeting, updateMeetingStatus, reload: loadMeetings }
 }

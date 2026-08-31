@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useMeetings } from '../hooks/useMeetings'
+import { useMeetingGuidance } from '../hooks/useMeetingGuidance'
 import { getStudentsByTeacher } from '../hooks/useTasks'
+import MeetingBriefingPanel from '../components/meetings/MeetingBriefingPanel'
+import MeetingOutcomePanel from '../components/meetings/MeetingOutcomePanel'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
@@ -11,7 +14,16 @@ import Spinner from '../components/ui/Spinner'
 export default function Meetings() {
   const { user } = useAuth()
   const isTeacher = user?.role === 'teacher'
-  const { meetings, loading, scheduleMeeting, updateMeetingStatus, reload } = useMeetings(user?.role, user?.id)
+  const { meetings, loading, error: meetingsError, scheduleMeeting, updateMeetingStatus, reload } = useMeetings(user?.role, user?.id)
+  const {
+    briefingsByMeeting,
+    actionItemsByMeeting,
+    loading: guidanceLoading,
+    error: guidanceError,
+    saveOutcomeSummary,
+    createActionItem,
+    updateActionItemStatus,
+  } = useMeetingGuidance(user?.role, user?.id, meetings)
   
   const [students, setStudents] = useState<any[]>([])
   const [loadingStudents, setLoadingStudents] = useState(false)
@@ -158,7 +170,17 @@ export default function Meetings() {
           </div>
         )}
 
-        <div className={`lg:col-span-${isTeacher ? '8' : '12'} space-y-6`}>
+        <div className={`${isTeacher ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-6`}>
+          {meetingsError && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              Görüşmeler yüklenemedi: {meetingsError.message}
+            </div>
+          )}
+          {guidanceError && !loading && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              Görüşme brifingi ve takip maddeleri yüklenemedi: {guidanceError.message}
+            </div>
+          )}
           <Card>
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
@@ -252,6 +274,14 @@ export default function Meetings() {
                         <p className="text-sm text-gray-500 mt-2 pl-1 border-l-2 border-gray-200">{m.description}</p>
                       )}
 
+                      {isTeacher && (
+                        <MeetingBriefingPanel
+                          briefing={briefingsByMeeting[m.id]}
+                          loading={guidanceLoading}
+                          error={null}
+                        />
+                      )}
+
                       {/* Öğretmen aksiyonları */}
                       {isTeacher && (
                         <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
@@ -299,8 +329,8 @@ export default function Meetings() {
                         </div>
                       </div>
                       <div>
-                        <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${m.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                          {m.status === 'completed' ? 'Tamamlandı' : 'İptal Edildi'}
+                        <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${m.status === 'completed' ? 'bg-green-100 text-green-800' : m.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {m.status === 'completed' ? 'Tamamlandı' : m.status === 'cancelled' ? 'İptal Edildi' : 'Planlanan tarih geçti'}
                         </span>
                       </div>
                     </div>
@@ -311,6 +341,18 @@ export default function Meetings() {
                         <div className="text-[10px] uppercase font-bold text-indigo-500 mb-1 tracking-wider">Değerlendirme Notu & Hedefler</div>
                         <p className="text-gray-600 leading-relaxed font-medium">{m.description}</p>
                       </div>
+                    )}
+
+                    {m.status === 'completed' && (
+                      <MeetingOutcomePanel
+                        meeting={m}
+                        items={actionItemsByMeeting[m.id] ?? []}
+                        isTeacher={isTeacher}
+                        loading={guidanceLoading}
+                        onSaveSummary={saveOutcomeSummary}
+                        onCreateItem={createActionItem}
+                        onUpdateItemStatus={updateActionItemStatus}
+                      />
                     )}
                   </div>
                 ))}
