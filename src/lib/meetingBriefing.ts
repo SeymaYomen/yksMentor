@@ -1,4 +1,5 @@
 import type { StudentStatusResult } from './studentStatus'
+import type { GoalProgressResult } from './goalProgress'
 
 export type BriefingPerformanceRow = {
   daily_hours?: number | null
@@ -42,6 +43,7 @@ export type BriefingMetricChange = {
 
 export type MeetingBriefing = {
   studentStatus: StudentStatusResult
+  goalProgress: GoalProgressResult | null
   period: {
     start: string
     end: string
@@ -70,6 +72,7 @@ export type MeetingBriefing = {
 export type BuildMeetingBriefingInput = {
   targetMeeting: BriefingMeetingRow
   studentStatus: StudentStatusResult
+  goalProgress?: GoalProgressResult
   performance: BriefingPerformanceRow[]
   tasks: BriefingTaskRow[]
   meetings: BriefingMeetingRow[]
@@ -205,6 +208,7 @@ export function buildMeetingBriefing(input: BuildMeetingBriefingInput): MeetingB
 
   return {
     studentStatus: input.studentStatus,
+    goalProgress: input.goalProgress ?? null,
     period: {
       start: new Date(start).toISOString(),
       end: now.toISOString(),

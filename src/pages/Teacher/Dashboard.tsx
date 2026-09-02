@@ -4,6 +4,7 @@ import { useMentorStudentSummaries } from '../../hooks/useMentorStudentSummaries
 import StudentList from '../../components/teacher/StudentList'
 import AssignTaskForm from '../../components/teacher/AssignTaskForm'
 import MentorSummary from '../../components/teacher/MentorSummary'
+import GoalForm from '../../components/goals/GoalForm'
 import StudentPerformanceChart from '../../components/student/StudentPerformanceChart'
 import TaskList from '../../components/student/TaskList'
 import Card from '../../components/ui/Card'
@@ -15,6 +16,7 @@ export default function TeacherDashboard() {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [isRefreshingCode, setIsRefreshingCode] = useState(false)
+  const [showGoalForm, setShowGoalForm] = useState(false)
 
   useEffect(() => {
     if (students.length === 0) {
@@ -26,6 +28,8 @@ export default function TeacherDashboard() {
       setSelectedStudent(students[0].id)
     }
   }, [selectedStudent, students])
+
+  useEffect(() => setShowGoalForm(false), [selectedStudent])
 
   const selectedStudentData = students.find(s => s.id === selectedStudent)
 
@@ -133,7 +137,32 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
 
-                {selectedStudentData && <MentorSummary status={selectedStudentData.status} />}
+                {selectedStudentData && (
+                  <>
+                    <MentorSummary status={selectedStudentData.status} goalProgress={selectedStudentData.goalProgress} />
+                    <div className="mb-8 rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-700">Ana hedef</h4>
+                          <p className="text-xs text-gray-500">Hedef değiştiğinde önceki kayıt silinmeden arşivlenir.</p>
+                        </div>
+                        <button type="button" onClick={() => setShowGoalForm(value => !value)} className="rounded-xl bg-indigo-100 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-200">
+                          {showGoalForm ? 'Kapat' : selectedStudentData.goalProgress.hasGoal ? 'Hedefi değiştir' : 'Hedef belirle'}
+                        </button>
+                      </div>
+                      {showGoalForm && (
+                        <div className="mt-4 border-t border-gray-200 pt-4">
+                          <GoalForm
+                            studentId={selectedStudentData.id}
+                            goal={selectedStudentData.goalProgress.goal}
+                            onCancel={() => setShowGoalForm(false)}
+                            onSaved={() => setShowGoalForm(false)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <div className="mb-2">
                   <h4 className="font-semibold text-gray-700 flex items-center gap-2">

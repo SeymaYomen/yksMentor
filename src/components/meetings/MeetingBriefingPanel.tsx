@@ -80,6 +80,39 @@ export default function MeetingBriefingPanel({ briefing, loading, error }: Props
         )}
       </div>
 
+      <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-3">
+        <div className="text-xs font-bold uppercase tracking-wider text-indigo-600">Hedef durumu</div>
+        {!briefing.goalProgress?.hasGoal ? (
+          <p className="mt-1 text-sm text-gray-500">Henüz ana hedef belirlenmedi.</p>
+        ) : (
+          <div className="mt-2 space-y-1 text-sm text-gray-700">
+            {typeof briefing.goalProgress.goal?.target_rank === 'number' && (
+              <p><strong>Hedef sıralama:</strong> {new Intl.NumberFormat('tr-TR').format(briefing.goalProgress.goal?.target_rank ?? 0)}</p>
+            )}
+            {(['tyt', 'ayt'] as const).map(key => {
+              const metric = briefing.goalProgress?.metrics[key]
+              if (!metric || metric.target === null) return null
+              const periodChange = briefing.performance[key]
+              return (
+                <p key={key}>
+                  <strong>{key.toUpperCase()}:</strong>{' '}
+                  {metric.current === null
+                    ? 'Performans verisi bekleniyor.'
+                    : metric.reached
+                      ? 'Hedef seviyesi aşıldı veya karşılandı.'
+                      : `Hedefin ${formatNumber(metric.remaining ?? 0)} net gerisinde.`}
+                  {periodChange.hasData && periodChange.delta !== null && (
+                    <span className="text-gray-500"> {briefing.period.label}: {periodChange.delta > 0 ? '+' : ''}{formatNumber(periodChange.delta)} net.</span>
+                  )}
+                </p>
+              )
+            })}
+            <p className="pt-1 text-xs font-semibold text-indigo-700">{briefing.goalProgress.label}</p>
+            {briefing.goalProgress.roadmap.slice(0, 2).map(item => <p key={item} className="text-xs text-gray-600">• {item}</p>)}
+          </div>
+        )}
+      </div>
+
       {!briefing.hasPeriodActivity && (
         <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Bu dönem için henüz yeni performans veya görev verisi oluşmadı.

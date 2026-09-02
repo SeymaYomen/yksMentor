@@ -124,3 +124,15 @@ test('sıfır performans değerini eksik veriyle karıştırmaz', () => {
   assert.equal(result.performance.tyt.previous, 0)
   assert.equal(result.performance.tyt.delta, 5)
 })
+
+test('merkezi hedef ilerleme çıktısını görüşme brifingine taşır', () => {
+  const goalProgress = {
+    hasGoal: true,
+    label: 'Hedefe yaklaşıyor',
+    roadmap: ['AYT açığı öncelikli takip edilmeli.'],
+  }
+  const result = build({ goalProgress })
+
+  assert.equal(result.goalProgress, goalProgress)
+  assert.equal(result.goalProgress.label, 'Hedefe yaklaşıyor')
+})

@@ -1,10 +1,11 @@
 import React from 'react'
 import type { MetricComparison, StudentStatusResult, TrendDirection } from '../../lib/studentStatus'
+import type { GoalMetricProgress, GoalProgressResult } from '../../lib/goalProgress'
 import StudentStatusBadge from './StudentStatusBadge'
 
 function formatNumber(value: number | null, suffix = '') {
   if (value === null) return 'Henüz yeterli veri yok'
-  return `${new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(value)}${suffix}`
+  return `${new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(value)}${suffix}`
 }
 
 function trendArrow(trend: TrendDirection) {
@@ -38,7 +39,27 @@ function SummaryRow({ label, children }: { label: string; children: React.ReactN
   )
 }
 
-export default function MentorSummary({ status }: { status: StudentStatusResult }) {
+function GoalMetricRow({ label, metric }: { label: string; metric: GoalMetricProgress }) {
+  if (metric.target === null) return null
+  return (
+    <div className="rounded-xl border border-indigo-100 bg-white/80 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-bold text-gray-700">{label}</span>
+        <span className="text-sm font-semibold text-indigo-700">
+          {metric.current === null ? 'Performans verisi yok' : `${formatNumber(metric.current)} / ${formatNumber(metric.target)}`}
+        </span>
+      </div>
+      {metric.current !== null && (
+        <div className="mt-1 flex flex-wrap gap-x-4 text-xs text-gray-500">
+          <span>{metric.reached ? 'Hedef seviyesi aşıldı veya karşılandı' : `Kalan: ${formatNumber(metric.remaining)}`}</span>
+          {metric.change30Days !== null && <span>Son dönem: {metric.change30Days > 0 ? '+' : ''}{formatNumber(metric.change30Days)}</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function MentorSummary({ status, goalProgress }: { status: StudentStatusResult; goalProgress: GoalProgressResult }) {
   const { metrics } = status
 
   return (
@@ -115,6 +136,38 @@ export default function MentorSummary({ status }: { status: StudentStatusResult 
             </div>
           )}
         </div>
+      </div>
+
+      <div className="mt-5 border-t border-indigo-100 pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h5 className="text-xs font-bold uppercase tracking-wider text-indigo-600">🎯 Hedefe İlerleme</h5>
+          <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-700">{goalProgress.label}</span>
+        </div>
+        {!goalProgress.hasGoal ? (
+          <p className="mt-3 rounded-xl border border-dashed border-indigo-200 bg-white/60 p-3 text-sm text-gray-500">Henüz ana hedef belirlenmedi.</p>
+        ) : (
+          <div className="mt-3 grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              {(goalProgress.goal?.university_name || goalProgress.goal?.program_name || typeof goalProgress.goal?.target_rank === 'number') && (
+                <div className="rounded-xl border border-indigo-100 bg-white/80 p-3 text-sm text-gray-700">
+                  {[goalProgress.goal?.university_name, goalProgress.goal?.program_name].filter(Boolean).join(' — ')}
+                  {goalProgress.goal?.target_rank !== null && goalProgress.goal?.target_rank !== undefined && (
+                    <div className="mt-1 text-xs font-semibold text-indigo-700">Hedef sıralama: {new Intl.NumberFormat('tr-TR').format(goalProgress.goal.target_rank)}</div>
+                  )}
+                </div>
+              )}
+              <GoalMetricRow label="TYT" metric={goalProgress.metrics.tyt} />
+              <GoalMetricRow label="AYT" metric={goalProgress.metrics.ayt} />
+              {goalProgress.rankEstimateMessage && <p className="text-xs leading-relaxed text-gray-500">{goalProgress.rankEstimateMessage}</p>}
+            </div>
+            <div>
+              <h6 className="text-xs font-bold uppercase tracking-wider text-gray-500">Kısa yol haritası</h6>
+              <ul className="mt-2 space-y-2 text-sm text-gray-700">
+                {goalProgress.roadmap.map(item => <li key={item} className="rounded-lg bg-white/80 px-3 py-2 shadow-sm">• {item}</li>)}
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   )

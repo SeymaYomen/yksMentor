@@ -3,13 +3,16 @@ import Card from '../../components/ui/Card'
 import TaskList from '../../components/student/TaskList'
 import PerformanceForm from '../../components/student/PerformanceForm'
 import StudentPerformanceChart from '../../components/student/StudentPerformanceChart'
+import GoalProgressCard from '../../components/goals/GoalProgressCard'
 import { useAuth } from '../../hooks/useAuth'
+import { useGoalProgress } from '../../hooks/useGoalProgress'
 import { useMeetings, Meeting } from '../../hooks/useMeetings'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 
 export default function StudentDashboard() {
   const { user, joinTeacher, getTeacherInfoByCode } = useAuth()
   const studentId = user?.id || ''
+  const { progress: goalProgress, loading: goalLoading, error: goalError } = useGoalProgress(studentId)
   const [mentorName, setMentorName] = useState<string | null>(null)
   
   // Görüşmeleri yükle
@@ -46,10 +49,6 @@ export default function StudentDashboard() {
       setNextMeeting(null)
     }
   }, [meetings])
-
-  // Mock net hedefleri ve güncel net özeti (gerçek veriden beslenebilir)
-  const mockTargetTyt = 95
-  const mockTargetAyt = 68
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
@@ -234,34 +233,12 @@ export default function StudentDashboard() {
         {/* SAĞ BLOK: Görev Listesi & Hedefler */}
         <div className="lg:col-span-4 space-y-6">
           
-          {/* TYT - AYT Net Özeti / Hedef Kartı */}
-          <Card className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white border-none">
-            <h3 className="text-md font-bold text-indigo-300 uppercase tracking-wider mb-4">🎯 Net Hedeflerin</h3>
-            
-            <div className="space-y-4">
-              {/* TYT */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="font-semibold text-slate-300">TYT Hedefi</span>
-                  <span className="font-bold text-indigo-400">{mockTargetTyt} Net</span>
-                </div>
-                <div className="w-full bg-slate-800 rounded-full h-2">
-                  <div className="bg-indigo-500 h-2 rounded-full" style={{ width: '75%' }}></div>
-                </div>
-              </div>
-
-              {/* AYT */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="font-semibold text-slate-300">AYT Hedefi</span>
-                  <span className="font-bold text-purple-400">{mockTargetAyt} Net</span>
-                </div>
-                <div className="w-full bg-slate-800 rounded-full h-2">
-                  <div className="bg-purple-500 h-2 rounded-full" style={{ width: '62%' }}></div>
-                </div>
-              </div>
-            </div>
-          </Card>
+          <GoalProgressCard
+            studentId={studentId}
+            progress={goalProgress}
+            loading={goalLoading}
+            error={goalError}
+          />
 
           {/* Görev Listesi Kartı */}
           <Card className="p-6">
