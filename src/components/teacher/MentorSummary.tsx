@@ -2,6 +2,7 @@ import React from 'react'
 import type { MetricComparison, StudentStatusResult, TrendDirection } from '../../lib/studentStatus'
 import type { GoalMetricProgress, GoalProgressResult } from '../../lib/goalProgress'
 import { selectCompetencyHighlights, type CompetencyMapResult, type TopicCompetencyResult } from '../../lib/competencyMap'
+import type { MentorAlertResult } from '../../lib/mentorAlerts'
 import StudentStatusBadge from './StudentStatusBadge'
 
 function formatNumber(value: number | null, suffix = '') {
@@ -78,10 +79,12 @@ export default function MentorSummary({
   status,
   goalProgress,
   competencyMap,
+  alerts,
 }: {
   status: StudentStatusResult
   goalProgress: GoalProgressResult
   competencyMap: CompetencyMapResult
+  alerts: MentorAlertResult
 }) {
   const { metrics } = status
   const competencyHighlights = selectCompetencyHighlights(competencyMap)
@@ -99,6 +102,29 @@ export default function MentorSummary({
       {!status.hasEnoughData && (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Henüz güvenilir bir değerlendirme için yeterli performans, görev veya tamamlanmış görüşme verisi yok.
+        </div>
+      )}
+
+      {alerts.alerts.length > 0 && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-white/90 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h5 className="text-xs font-bold uppercase tracking-wider text-amber-700">Aktif Uyarılar</h5>
+            <span className="text-xs font-medium text-gray-500">{alerts.summary}</span>
+          </div>
+          <ul className="mt-3 grid gap-2 md:grid-cols-2">
+            {alerts.alerts.map(alert => (
+              <li key={alert.type} className="rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${alert.severity === 'high' ? 'bg-red-500' : 'bg-amber-400'}`} />
+                  <span className="text-sm font-bold text-gray-800">{alert.title}</span>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-gray-600">{alert.reason}</p>
+              </li>
+            ))}
+          </ul>
+          {alerts.suggestedAction && (
+            <p className="mt-3 border-t border-amber-100 pt-3 text-sm font-semibold text-indigo-700">Öneri: {alerts.suggestedAction}</p>
+          )}
         </div>
       )}
 

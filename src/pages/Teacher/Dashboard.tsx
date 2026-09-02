@@ -4,6 +4,7 @@ import { useMentorStudentSummaries } from '../../hooks/useMentorStudentSummaries
 import StudentList from '../../components/teacher/StudentList'
 import AssignTaskForm from '../../components/teacher/AssignTaskForm'
 import MentorSummary from '../../components/teacher/MentorSummary'
+import EarlyWarningCenter from '../../components/teacher/EarlyWarningCenter'
 import GoalForm from '../../components/goals/GoalForm'
 import StudentPerformanceChart from '../../components/student/StudentPerformanceChart'
 import TaskList from '../../components/student/TaskList'
@@ -100,6 +101,14 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
+      <EarlyWarningCenter
+        students={students}
+        loading={studentsLoading}
+        error={studentsError}
+        onSelectStudent={setSelectedStudent}
+        onRetry={() => void reload()}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sol Kolon: Öğrenci Listesi */}
         <div className="lg:col-span-1 space-y-6">
@@ -143,6 +152,7 @@ export default function TeacherDashboard() {
                       status={selectedStudentData.status}
                       goalProgress={selectedStudentData.goalProgress}
                       competencyMap={selectedStudentData.competencyMap}
+                      alerts={selectedStudentData.alerts}
                     />
                     <div className="mb-8 rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
                       <div className="flex items-center justify-between gap-3">

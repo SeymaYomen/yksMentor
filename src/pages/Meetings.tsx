@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMeetings } from '../hooks/useMeetings'
 import { useMeetingGuidance } from '../hooks/useMeetingGuidance'
@@ -12,6 +13,8 @@ import { showSuccess, showError } from '../components/ui/ToastButton'
 import Spinner from '../components/ui/Spinner'
 
 export default function Meetings() {
+  const [searchParams] = useSearchParams()
+  const requestedStudentId = searchParams.get('studentId')
   const { user } = useAuth()
   const isTeacher = user?.role === 'teacher'
   const { meetings, loading, error: meetingsError, scheduleMeeting, updateMeetingStatus, reload } = useMeetings(user?.role, user?.id)
@@ -49,6 +52,12 @@ export default function Meetings() {
         .finally(() => setLoadingStudents(false))
     }
   }, [isTeacher, user?.id])
+
+  useEffect(() => {
+    if (requestedStudentId && students.some(student => student.id === requestedStudentId)) {
+      setStudentId(requestedStudentId)
+    }
+  }, [requestedStudentId, students])
 
   async function handleSchedule(e: React.FormEvent) {
     e.preventDefault()

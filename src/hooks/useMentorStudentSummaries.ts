@@ -3,6 +3,8 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { calculateGoalProgress, type GoalProgressResult, type StudentGoal } from '../lib/goalProgress'
 import { loadTopicPerformanceSignals, type StudentTopicPerformanceSignal } from '../lib/academicData'
 import { calculateCompetencyMap, type CompetencyMapResult } from '../lib/competencyMap'
+import { calculateMentorAlerts, type MentorAlertResult } from '../lib/mentorAlerts'
+import type { MeetingActionItem } from '../lib/meetingBriefing'
 import {
   calculateStudentStatus,
   type MeetingSignal,
@@ -18,6 +20,7 @@ export type MentorStudentSummary = {
   status: StudentStatusResult
   goalProgress: GoalProgressResult
   competencyMap: CompetencyMapResult
+  alerts: MentorAlertResult
 }
 
 type ProfileRow = {
@@ -56,7 +59,7 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
   const studentIds = profiles.map(profile => profile.id)
   if (studentIds.length === 0) return []
 
-  const [performanceResult, taskResult, meetingResult, goalResult, topicPerformance] = await Promise.all([
+  const [performanceResult, taskResult, meetingResult, goalResult, actionItemResult, topicPerformance] = await Promise.all([
     supabase
       .from('performance')
       .select('student_id, daily_hours, tyt_net, ayt_net, date, created_at')
@@ -74,6 +77,10 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
       .select('*')
       .in('student_id', studentIds)
       .eq('is_active', true),
+    supabase
+      .from('meeting_action_items')
+      .select('*')
+      .in('student_id', studentIds),
     loadTopicPerformanceSignals(studentIds).catch(caughtError => {
       console.error('Academic competency data could not be loaded:', caughtError)
       return []
@@ -84,10 +91,12 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
   if (taskResult.error) throw taskResult.error
   if (meetingResult.error) throw meetingResult.error
   if (goalResult.error) throw goalResult.error
+  if (actionItemResult.error) throw actionItemResult.error
 
   const performanceByStudent = groupByStudent((performanceResult.data ?? []) as PerformanceRow[])
   const tasksByStudent = groupByStudent((taskResult.data ?? []) as TaskRow[])
   const meetingsByStudent = groupByStudent((meetingResult.data ?? []) as MeetingRow[])
+  const actionItemsByStudent = groupByStudent((actionItemResult.data ?? []) as MeetingActionItem[])
   const goalsByStudent = new Map(((goalResult.data ?? []) as StudentGoal[]).map(goal => [goal.student_id, goal]))
   const topicPerformanceByStudent = topicPerformance.reduce<Record<string, StudentTopicPerformanceSignal[]>>((groups, row) => {
     ;(groups[row.studentId] ??= []).push(row)
@@ -97,27 +106,42 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
 
   return profiles.map(profile => {
     const performance = performanceByStudent[profile.id] ?? []
+    const tasks = tasksByStudent[profile.id] ?? []
+    const meetings = meetingsByStudent[profile.id] ?? []
     const status = calculateStudentStatus({
       performance,
-      tasks: tasksByStudent[profile.id] ?? [],
-      meetings: meetingsByStudent[profile.id] ?? [],
+      tasks,
+      meetings,
       now,
     })
     const competencyMap = calculateCompetencyMap(topicPerformanceByStudent[profile.id] ?? [])
+    const goalProgress = calculateGoalProgress({
+      goal: goalsByStudent.get(profile.id) ?? null,
+      performance,
+      studentStatus: status,
+      academicInsights: competencyMap.topics.flatMap(topic => topic.status === 'insufficient_data' ? [] : [{
+        examType: topic.examType,
+        topicName: topic.topicName,
+        status: topic.status,
+        trend: topic.trend,
+      }]),
+      now,
+    })
     return {
       ...profile,
       status,
       competencyMap,
-      goalProgress: calculateGoalProgress({
-        goal: goalsByStudent.get(profile.id) ?? null,
-        performance,
+      goalProgress,
+      alerts: calculateMentorAlerts({
+        studentId: profile.id,
+        studentCreatedAt: profile.created_at,
         studentStatus: status,
-        academicInsights: competencyMap.topics.flatMap(topic => topic.status === 'insufficient_data' ? [] : [{
-          examType: topic.examType,
-          topicName: topic.topicName,
-          status: topic.status,
-          trend: topic.trend,
-        }]),
+        goalProgress,
+        competencySummary: competencyMap,
+        performance,
+        tasks,
+        meetings,
+        actionItems: actionItemsByStudent[profile.id] ?? [],
         now,
       }),
     }
@@ -158,6 +182,7 @@ export function useMentorStudentSummaries(teacherId?: string) {
     window.addEventListener('meetings_updated', handleDataUpdate)
     window.addEventListener('goal_updated', handleDataUpdate)
     window.addEventListener('topic_performance_updated', handleDataUpdate)
+    window.addEventListener('meeting_guidance_updated', handleDataUpdate)
 
     return () => {
       window.removeEventListener('performance_updated', handleDataUpdate)
@@ -165,6 +190,7 @@ export function useMentorStudentSummaries(teacherId?: string) {
       window.removeEventListener('meetings_updated', handleDataUpdate)
       window.removeEventListener('goal_updated', handleDataUpdate)
       window.removeEventListener('topic_performance_updated', handleDataUpdate)
+      window.removeEventListener('meeting_guidance_updated', handleDataUpdate)
     }
   }, [reload])
 
