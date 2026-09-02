@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { buildMeetingBriefing, type MeetingActionItem, type MeetingBriefing } from '../lib/meetingBriefing'
 import { calculateGoalProgress, type StudentGoal } from '../lib/goalProgress'
+import { loadTopicPerformanceSignals, type StudentTopicPerformanceSignal } from '../lib/academicData'
+import { calculateCompetencyMap } from '../lib/competencyMap'
 import { calculateStudentStatus } from '../lib/studentStatus'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import type { Meeting } from './useMeetings'
@@ -48,6 +50,7 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
   const [tasks, setTasks] = useState<TaskRow[]>([])
   const [actionItems, setActionItems] = useState<MeetingActionItem[]>([])
   const [goals, setGoals] = useState<StudentGoal[]>([])
+  const [topicPerformance, setTopicPerformance] = useState<StudentTopicPerformanceSignal[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const studentIds = useMemo(() => [...new Set(meetings.map(meeting => meeting.student_id))], [meetings])
@@ -59,6 +62,7 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
       setTasks([])
       setActionItems([])
       setGoals([])
+      setTopicPerformance([])
       setError(null)
       setLoading(false)
       return
@@ -75,7 +79,7 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
     try {
       // These filters reduce payload size only. Existing table RLS remains the
       // authorization boundary for both mentor and student reads.
-      const [performanceResult, taskResult, actionItemResult, goalResult] = await Promise.all([
+      const [performanceResult, taskResult, actionItemResult, goalResult, topicPerformanceResult] = await Promise.all([
         supabase
           .from('performance')
           .select('student_id, daily_hours, tyt_net, ayt_net, date, created_at')
@@ -94,6 +98,10 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
           .select('*')
           .in('student_id', studentIds)
           .eq('is_active', true),
+        loadTopicPerformanceSignals(studentIds).catch(caughtError => {
+          console.error('Meeting academic competency data could not be loaded:', caughtError)
+          return []
+        }),
       ])
 
       if (performanceResult.error) throw performanceResult.error
@@ -105,6 +113,7 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
       setTasks((taskResult.data ?? []) as TaskRow[])
       setActionItems((actionItemResult.data ?? []) as MeetingActionItem[])
       setGoals((goalResult.data ?? []) as StudentGoal[])
+      setTopicPerformance(topicPerformanceResult)
     } catch (caughtError) {
       console.error('Meeting guidance data could not be loaded:', caughtError)
       setError(caughtError instanceof Error ? caughtError : new Error(String(caughtError)))
@@ -120,11 +129,13 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
     window.addEventListener('performance_updated', handleUpdate)
     window.addEventListener('tasks_updated', handleUpdate)
     window.addEventListener('goal_updated', handleUpdate)
+    window.addEventListener('topic_performance_updated', handleUpdate)
     return () => {
       window.removeEventListener('meeting_guidance_updated', handleUpdate)
       window.removeEventListener('performance_updated', handleUpdate)
       window.removeEventListener('tasks_updated', handleUpdate)
       window.removeEventListener('goal_updated', handleUpdate)
+      window.removeEventListener('topic_performance_updated', handleUpdate)
     }
   }, [reload])
 
@@ -134,6 +145,10 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
     const meetingsByStudent = groupByStudent(meetings)
     const itemsByStudent = groupByStudent(actionItems)
     const goalsByStudent = new Map(goals.map(goal => [goal.student_id, goal]))
+    const topicPerformanceByStudent = topicPerformance.reduce<Record<string, StudentTopicPerformanceSignal[]>>((groups, row) => {
+      ;(groups[row.studentId] ??= []).push(row)
+      return groups
+    }, {})
     const briefingsByMeeting: Record<string, MeetingBriefing> = {}
 
     meetings.forEach(meeting => {
@@ -147,16 +162,24 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
         tasks: studentTasks,
         meetings: studentMeetings,
       })
+      const competencyMap = calculateCompetencyMap(topicPerformanceByStudent[meeting.student_id] ?? [])
       const goalProgress = calculateGoalProgress({
         goal: goalsByStudent.get(meeting.student_id) ?? null,
         performance: studentPerformance,
         studentStatus,
+        academicInsights: competencyMap.topics.flatMap(topic => topic.status === 'insufficient_data' ? [] : [{
+          examType: topic.examType,
+          topicName: topic.topicName,
+          status: topic.status,
+          trend: topic.trend,
+        }]),
       })
 
       briefingsByMeeting[meeting.id] = buildMeetingBriefing({
         targetMeeting: meeting,
         studentStatus,
         goalProgress,
+        competencyMap,
         performance: studentPerformance,
         tasks: studentTasks,
         meetings: studentMeetings,
@@ -168,7 +191,7 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
       briefingsByMeeting,
       actionItemsByMeeting: groupItemsByMeeting(actionItems),
     }
-  }, [actionItems, goals, meetings, performance, tasks])
+  }, [actionItems, goals, meetings, performance, tasks, topicPerformance])
 
   async function saveOutcomeSummary(meetingId: string, summary: string) {
     if (!supabase) throw new Error('Supabase yapılandırılmamış.')

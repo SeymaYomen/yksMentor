@@ -66,6 +66,13 @@ export type GoalProgressResult = {
   rankEstimateMessage: string | null
 }
 
+export type GoalAcademicInsight = {
+  examType: 'TYT' | 'AYT'
+  topicName: string
+  status: 'strong' | 'developing' | 'weak'
+  trend: 'improving' | 'stable' | 'declining' | 'insufficient_data'
+}
+
 export const GOAL_FIELD_LIMITS = {
   tytNet: { min: 0, max: 120 },
   aytNet: { min: 0, max: 80 },
@@ -259,6 +266,7 @@ function buildRoadmap(
   ayt: GoalMetricProgress,
   studentStatus: StudentStatusResult | undefined,
   targetDatePassed: boolean,
+  academicInsights: GoalAcademicInsight[],
 ) {
   if (!goal) return ['Önce öğrenci için yapılandırılmış bir ana hedef tanımlanmalı.']
 
@@ -286,6 +294,17 @@ function buildRoadmap(
     roadmap.push('Sıralama veya puan hedefinin ilerlemesini ölçmek için TYT/AYT net hedefleri de tanımlanabilir.')
   }
 
+  const openExamTypes = new Set(openMetrics.map(entry => entry.name))
+  const academicAttention = academicInsights
+    .filter(insight => openExamTypes.has(insight.examType) && (insight.status === 'weak' || insight.trend === 'declining'))
+    .sort((a, b) => Number(b.trend === 'declining') - Number(a.trend === 'declining'))
+    .slice(0, 2)
+  if (academicAttention.length > 0) {
+    const examType = academicAttention[0].examType
+    const topicNames = academicAttention.filter(insight => insight.examType === examType).map(insight => insight.topicName)
+    roadmap.push(`${examType} tarafında ${topicNames.join(' ve ')} dikkat gerektiriyor.`)
+  }
+
   const movingAway = metricEntries.find(entry => entry.metric.status === 'moving_away')
   const approaching = metricEntries.find(entry => entry.metric.status === 'approaching')
   if (movingAway) roadmap.push(`${movingAway.name} son 30 günde hedeften uzaklaşıyor; düşüşün nedeni görüşmede ele alınmalı.`)
@@ -311,11 +330,13 @@ export function calculateGoalProgress({
   goal,
   performance,
   studentStatus,
+  academicInsights = [],
   now = new Date(),
 }: {
   goal: StudentGoal | null
   performance: GoalPerformanceRow[]
   studentStatus?: StudentStatusResult
+  academicInsights?: GoalAcademicInsight[]
   now?: Date
 }): GoalProgressResult {
   if (!goal) {
@@ -346,7 +367,7 @@ export function calculateGoalProgress({
     label: statusLabel(status),
     metrics: { tyt, ayt },
     reasons: buildReasons(goal, tyt, ayt, status),
-    roadmap: buildRoadmap(goal, tyt, ayt, studentStatus, targetDatePassed),
+    roadmap: buildRoadmap(goal, tyt, ayt, studentStatus, targetDatePassed, academicInsights),
     targetDatePassed,
     reliableRankEstimateAvailable: false,
     rankEstimateMessage: hasRankOrScoreTarget

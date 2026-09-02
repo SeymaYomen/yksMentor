@@ -4,6 +4,7 @@ import TaskList from '../../components/student/TaskList'
 import PerformanceForm from '../../components/student/PerformanceForm'
 import StudentPerformanceChart from '../../components/student/StudentPerformanceChart'
 import GoalProgressCard from '../../components/goals/GoalProgressCard'
+import TopicCompetencyMap from '../../components/student/TopicCompetencyMap'
 import { useAuth } from '../../hooks/useAuth'
 import { useGoalProgress } from '../../hooks/useGoalProgress'
 import { useMeetings, Meeting } from '../../hooks/useMeetings'
@@ -227,6 +228,8 @@ export default function StudentDashboard() {
               <StudentPerformanceChart studentId={studentId} />
             </div>
           </Card>
+
+          <TopicCompetencyMap studentId={studentId} />
 
         </div>
 

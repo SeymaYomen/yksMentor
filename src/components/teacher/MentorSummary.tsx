@@ -1,6 +1,7 @@
 import React from 'react'
 import type { MetricComparison, StudentStatusResult, TrendDirection } from '../../lib/studentStatus'
 import type { GoalMetricProgress, GoalProgressResult } from '../../lib/goalProgress'
+import { selectCompetencyHighlights, type CompetencyMapResult, type TopicCompetencyResult } from '../../lib/competencyMap'
 import StudentStatusBadge from './StudentStatusBadge'
 
 function formatNumber(value: number | null, suffix = '') {
@@ -59,8 +60,31 @@ function GoalMetricRow({ label, metric }: { label: string; metric: GoalMetricPro
   )
 }
 
-export default function MentorSummary({ status, goalProgress }: { status: StudentStatusResult; goalProgress: GoalProgressResult }) {
+function CompetencyList({ title, topics, className }: { title: string; topics: TopicCompetencyResult[]; className: string }) {
+  if (topics.length === 0) return null
+  return (
+    <div>
+      <h6 className={`text-xs font-bold uppercase tracking-wider ${className}`}>{title}</h6>
+      <ul className="mt-1.5 space-y-1 text-sm text-gray-700">
+        {topics.slice(0, 3).map(topic => (
+          <li key={topic.topicId}>• {topic.examType} {topic.subjectName} / {topic.topicName} {topic.trend === 'improving' ? '↑' : topic.trend === 'declining' ? '↓' : ''}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+export default function MentorSummary({
+  status,
+  goalProgress,
+  competencyMap,
+}: {
+  status: StudentStatusResult
+  goalProgress: GoalProgressResult
+  competencyMap: CompetencyMapResult
+}) {
   const { metrics } = status
+  const competencyHighlights = selectCompetencyHighlights(competencyMap)
 
   return (
     <section className="mb-8 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white p-5" aria-labelledby="mentor-summary-title">
@@ -166,6 +190,27 @@ export default function MentorSummary({ status, goalProgress }: { status: Studen
                 {goalProgress.roadmap.map(item => <li key={item} className="rounded-lg bg-white/80 px-3 py-2 shadow-sm">• {item}</li>)}
               </ul>
             </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-5 border-t border-indigo-100 pt-5">
+        <h5 className="text-xs font-bold uppercase tracking-wider text-purple-600">Akademik Yetkinlik</h5>
+        {!competencyMap.hasReliableData ? (
+          <p className="mt-3 rounded-xl border border-dashed border-purple-200 bg-white/60 p-3 text-sm text-gray-500">Henüz yeterli konu verisi yok.</p>
+        ) : (
+          <div className="mt-3 grid gap-4 md:grid-cols-3">
+            <CompetencyList title="Güçlü alanlar" topics={competencyHighlights.strong} className="text-emerald-600" />
+            <CompetencyList
+              title="Gelişen alanlar"
+              topics={competencyHighlights.developing}
+              className="text-blue-600"
+            />
+            <CompetencyList
+              title="Dikkat gerekenler"
+              topics={competencyHighlights.attention}
+              className="text-red-600"
+            />
           </div>
         )}
       </div>

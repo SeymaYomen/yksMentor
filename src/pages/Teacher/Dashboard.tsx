@@ -139,7 +139,11 @@ export default function TeacherDashboard() {
 
                 {selectedStudentData && (
                   <>
-                    <MentorSummary status={selectedStudentData.status} goalProgress={selectedStudentData.goalProgress} />
+                    <MentorSummary
+                      status={selectedStudentData.status}
+                      goalProgress={selectedStudentData.goalProgress}
+                      competencyMap={selectedStudentData.competencyMap}
+                    />
                     <div className="mb-8 rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>

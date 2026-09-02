@@ -136,3 +136,14 @@ test('merkezi hedef ilerleme çıktısını görüşme brifingine taşır', () =
   assert.equal(result.goalProgress, goalProgress)
   assert.equal(result.goalProgress.label, 'Hedefe yaklaşıyor')
 })
+
+test('merkezi akademik yetkinlik çıktısını görüşme brifingine taşır', () => {
+  const competencyMap = {
+    hasReliableData: true,
+    topics: [{ topicId: 'geometry', topicName: 'Geometri', status: 'weak', trend: 'declining' }],
+  }
+  const result = build({ competencyMap })
+
+  assert.equal(result.competencyMap, competencyMap)
+  assert.equal(result.competencyMap.topics[0].topicName, 'Geometri')
+})

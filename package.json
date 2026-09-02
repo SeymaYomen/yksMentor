@@ -11,6 +11,8 @@
     "test:meeting-security": "node --test tests/meetingSecurityMigration.test.mjs",
     "test:goal-progress": "node --test tests/goalProgress.test.mjs",
     "test:goal-security": "node --test tests/goalSecurityMigration.test.mjs",
+    "test:competency": "node --test tests/competencyMap.test.mjs",
+    "test:competency-security": "node --test tests/competencySecurityMigration.test.mjs",
     "test": "node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit"
   },

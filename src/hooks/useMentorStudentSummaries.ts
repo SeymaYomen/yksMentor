@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { calculateGoalProgress, type GoalProgressResult, type StudentGoal } from '../lib/goalProgress'
+import { loadTopicPerformanceSignals, type StudentTopicPerformanceSignal } from '../lib/academicData'
+import { calculateCompetencyMap, type CompetencyMapResult } from '../lib/competencyMap'
 import {
   calculateStudentStatus,
   type MeetingSignal,
@@ -15,6 +17,7 @@ export type MentorStudentSummary = {
   created_at: string | null
   status: StudentStatusResult
   goalProgress: GoalProgressResult
+  competencyMap: CompetencyMapResult
 }
 
 type ProfileRow = {
@@ -53,7 +56,7 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
   const studentIds = profiles.map(profile => profile.id)
   if (studentIds.length === 0) return []
 
-  const [performanceResult, taskResult, meetingResult, goalResult] = await Promise.all([
+  const [performanceResult, taskResult, meetingResult, goalResult, topicPerformance] = await Promise.all([
     supabase
       .from('performance')
       .select('student_id, daily_hours, tyt_net, ayt_net, date, created_at')
@@ -71,6 +74,10 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
       .select('*')
       .in('student_id', studentIds)
       .eq('is_active', true),
+    loadTopicPerformanceSignals(studentIds).catch(caughtError => {
+      console.error('Academic competency data could not be loaded:', caughtError)
+      return []
+    }),
   ])
 
   if (performanceResult.error) throw performanceResult.error
@@ -82,6 +89,10 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
   const tasksByStudent = groupByStudent((taskResult.data ?? []) as TaskRow[])
   const meetingsByStudent = groupByStudent((meetingResult.data ?? []) as MeetingRow[])
   const goalsByStudent = new Map(((goalResult.data ?? []) as StudentGoal[]).map(goal => [goal.student_id, goal]))
+  const topicPerformanceByStudent = topicPerformance.reduce<Record<string, StudentTopicPerformanceSignal[]>>((groups, row) => {
+    ;(groups[row.studentId] ??= []).push(row)
+    return groups
+  }, {})
   const now = new Date()
 
   return profiles.map(profile => {
@@ -92,13 +103,21 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
       meetings: meetingsByStudent[profile.id] ?? [],
       now,
     })
+    const competencyMap = calculateCompetencyMap(topicPerformanceByStudent[profile.id] ?? [])
     return {
       ...profile,
       status,
+      competencyMap,
       goalProgress: calculateGoalProgress({
         goal: goalsByStudent.get(profile.id) ?? null,
         performance,
         studentStatus: status,
+        academicInsights: competencyMap.topics.flatMap(topic => topic.status === 'insufficient_data' ? [] : [{
+          examType: topic.examType,
+          topicName: topic.topicName,
+          status: topic.status,
+          trend: topic.trend,
+        }]),
         now,
       }),
     }
@@ -138,12 +157,14 @@ export function useMentorStudentSummaries(teacherId?: string) {
     window.addEventListener('tasks_updated', handleDataUpdate)
     window.addEventListener('meetings_updated', handleDataUpdate)
     window.addEventListener('goal_updated', handleDataUpdate)
+    window.addEventListener('topic_performance_updated', handleDataUpdate)
 
     return () => {
       window.removeEventListener('performance_updated', handleDataUpdate)
       window.removeEventListener('tasks_updated', handleDataUpdate)
       window.removeEventListener('meetings_updated', handleDataUpdate)
       window.removeEventListener('goal_updated', handleDataUpdate)
+      window.removeEventListener('topic_performance_updated', handleDataUpdate)
     }
   }, [reload])
 

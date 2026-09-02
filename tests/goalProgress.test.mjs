@@ -158,3 +158,18 @@ test('yol haritası büyük göreli açığı, yükselişi ve görev süreklili�
   assert.match(result.roadmap[2], /Görev uyumu %68/)
   assert.doesNotMatch(result.roadmap.join(' '), /fonksiyon|problem|türev/i)
 })
+
+test('güvenilir akademik içgörüyü açık hedef tarafına gözlemsel olarak bağlar', () => {
+  const result = calculateGoalProgress({
+    goal: goal({ target_ayt_net: null }),
+    performance: [
+      { date: '2026-08-05', tyt_net: 60 },
+      { date: '2026-08-28', tyt_net: 65 },
+    ],
+    academicInsights: [{ examType: 'TYT', topicName: 'Geometri', status: 'weak', trend: 'declining' }],
+    now,
+  })
+
+  assert.match(result.roadmap.join(' '), /TYT tarafında Geometri dikkat gerektiriyor/)
+  assert.doesNotMatch(result.roadmap.join(' '), /net kazandırır|soru çöz/)
+})

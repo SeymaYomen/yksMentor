@@ -100,6 +100,11 @@ function TaskItem({ task, toggle, readOnly = false }: { task: Task; toggle: (id:
           {task.title}
         </div>
         <div className="flex items-center gap-4 mt-1">
+          {(task.exam_type || task.subject || task.topic) && (
+            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+              {[task.exam_type, task.subject?.name, task.topic?.name].filter(Boolean).join(' / ')}
+            </span>
+          )}
           {task.due_date && (
             <div className={`text-xs flex items-center gap-1 ${
               isCompleted ? 'text-gray-400' : 

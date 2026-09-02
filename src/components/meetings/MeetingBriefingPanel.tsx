@@ -1,5 +1,6 @@
 import React from 'react'
 import type { BriefingMetricChange, MeetingBriefing } from '../../lib/meetingBriefing'
+import { selectCompetencyHighlights } from '../../lib/competencyMap'
 import Spinner from '../ui/Spinner'
 import StudentStatusBadge from '../teacher/StudentStatusBadge'
 
@@ -47,6 +48,16 @@ export default function MeetingBriefingPanel({ briefing, loading, error }: Props
   }
 
   if (!briefing) return null
+
+  const competencyHighlights = briefing.competencyMap
+    ? selectCompetencyHighlights(briefing.competencyMap, 2)
+    : { strong: [], developing: [], attention: [] }
+  const academicItems = [
+    ...competencyHighlights.attention.map(topic => `${topic.examType} ${topic.topicName} ${topic.trend === 'declining' ? 'son ölçümlerde düşüyor.' : 'dikkat gerektiriyor.'}`),
+    ...competencyHighlights.developing
+      .filter(topic => topic.trend === 'improving')
+      .map(topic => `${topic.examType} ${topic.topicName} gelişiyor.`),
+  ].slice(0, 2)
 
   return (
     <section className="mt-4 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-4" aria-label="Görüşme öncesi brifing">
@@ -111,6 +122,17 @@ export default function MeetingBriefingPanel({ briefing, loading, error }: Props
             {briefing.goalProgress.roadmap.slice(0, 2).map(item => <p key={item} className="text-xs text-gray-600">• {item}</p>)}
           </div>
         )}
+      </div>
+
+      <div className="mt-3 rounded-xl border border-purple-100 bg-purple-50/50 px-4 py-3">
+        <div className="text-xs font-bold uppercase tracking-wider text-purple-600">Akademik dikkat</div>
+        {!briefing.competencyMap?.hasReliableData ? (
+          <p className="mt-1 text-sm text-gray-500">Henüz yeterli konu verisi yok.</p>
+        ) : academicItems.length > 0 ? (
+          <ul className="mt-2 space-y-1 text-sm text-gray-700">
+            {academicItems.map(item => <li key={item}>• {item}</li>)}
+          </ul>
+        ) : <p className="mt-1 text-sm text-gray-500">Belirgin akademik dikkat sinyali yok.</p>}
       </div>
 
       {!briefing.hasPeriodActivity && (

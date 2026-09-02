@@ -3,12 +3,14 @@ import { supabase } from '../../lib/supabase'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import { showSuccess, showError } from '../ui/ToastButton'
+import TopicPerformanceFields, { type TopicPerformanceEntryInput } from './TopicPerformanceFields'
 
 export default function PerformanceForm({ studentId }: { studentId: string }) {
   const [dailyHours, setDailyHours] = useState('')
   const [tytNet, setTytNet] = useState('')
   const [aytNet, setAytNet] = useState('')
   const [loading, setLoading] = useState(false)
+  const [topicEntries, setTopicEntries] = useState<TopicPerformanceEntryInput[]>([])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -40,13 +42,19 @@ export default function PerformanceForm({ studentId }: { studentId: string }) {
     }
 
     setLoading(true)
-    const payload = {
-      student_id: studentId,
-      daily_hours: dHours || 0,
-      tyt_net: tNet || 0,
-      ayt_net: aNet || 0,
-    }
-    const { error } = await supabase.from('performance').insert([payload])
+    const { error } = topicEntries.length > 0
+      ? await supabase.rpc('record_student_performance', {
+        p_daily_hours: dHours || 0,
+        p_tyt_net: tNet || 0,
+        p_ayt_net: aNet || 0,
+        p_topic_entries: topicEntries,
+      })
+      : await supabase.from('performance').insert([{
+        student_id: studentId,
+        daily_hours: dHours || 0,
+        tyt_net: tNet || 0,
+        ayt_net: aNet || 0,
+      }])
     setLoading(false)
     if (error) {
       showError('Kayıt sırasında hata oluştu: ' + error.message)
@@ -55,10 +63,12 @@ export default function PerformanceForm({ studentId }: { studentId: string }) {
     
     // YENİ KAYIT EKLENİNCE GRAFİĞİ TETİKLEMEK İÇİN BİR OLAY (EVENT) FIRLATABİLİRİZ
     window.dispatchEvent(new Event('performance_updated'))
+    if (topicEntries.length > 0) window.dispatchEvent(new Event('topic_performance_updated'))
 
     setDailyHours('')
     setTytNet('')
     setAytNet('')
+    setTopicEntries([])
     showSuccess('Performans kaydı başarıyla eklendi 🎉')
   }
 
@@ -108,6 +118,7 @@ export default function PerformanceForm({ studentId }: { studentId: string }) {
           />
         </div>
       </div>
+      <TopicPerformanceFields entries={topicEntries} onChange={setTopicEntries} />
       <div className="pt-2">
         <Button type="submit" loading={loading} className="w-full !from-green-500 !to-emerald-600 hover:!from-green-400 hover:!to-emerald-500">
           Bugünkü Verileri Kaydet

@@ -7,6 +7,17 @@ export type Task = {
   title: string
   status: boolean
   due_date?: string | null
+  exam_type?: 'TYT' | 'AYT' | null
+  subject_id?: string | null
+  topic_id?: string | null
+  subject?: { name: string } | null
+  topic?: { name: string } | null
+}
+
+export type TaskAcademicLink = {
+  examType?: 'TYT' | 'AYT' | null
+  subjectId?: string | null
+  topicId?: string | null
 }
 
 export function useTasks(studentId?: string) {
@@ -30,7 +41,11 @@ export function useTasks(studentId?: string) {
       return
     }
     setLoading(true)
-    const { data, error } = await supabase.from('tasks').select('*').eq('student_id', studentId).order('created_at', { ascending: false })
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*, subject:exam_subjects(name), topic:exam_topics(name)')
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false })
     setLoading(false)
     if (error) {
       console.error(error)
@@ -40,14 +55,25 @@ export function useTasks(studentId?: string) {
     setTasks(data as any)
   }
 
-  async function createTask(student_id: string, title: string, due_date?: string) {
+  async function createTask(student_id: string, title: string, due_date?: string, academic?: TaskAcademicLink) {
     if (!supabase) throw new Error('Supabase yapılandırılmamış. .env dosyanızı kontrol edin.')
-    const { data, error } = await supabase.rpc('assign_task', {
-      p_student_id: student_id,
-      p_title: title,
-      p_due_date: due_date || null,
-      p_description: null,
-    })
+    const hasAcademicLink = Boolean(academic?.examType || academic?.subjectId || academic?.topicId)
+    const { data, error } = hasAcademicLink
+      ? await supabase.rpc('assign_academic_task', {
+        p_student_id: student_id,
+        p_title: title,
+        p_due_date: due_date || null,
+        p_description: null,
+        p_exam_type: academic?.examType ?? null,
+        p_subject_id: academic?.subjectId ?? null,
+        p_topic_id: academic?.topicId ?? null,
+      })
+      : await supabase.rpc('assign_task', {
+        p_student_id: student_id,
+        p_title: title,
+        p_due_date: due_date || null,
+        p_description: null,
+      })
     if (error) throw error
     window.dispatchEvent(new Event('tasks_updated'))
     await fetchTasks()
