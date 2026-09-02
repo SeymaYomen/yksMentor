@@ -4,6 +4,7 @@ import type { GoalMetricProgress, GoalProgressResult } from '../../lib/goalProgr
 import { selectCompetencyHighlights, type CompetencyMapResult, type TopicCompetencyResult } from '../../lib/competencyMap'
 import type { MentorAlertResult } from '../../lib/mentorAlerts'
 import StudentStatusBadge from './StudentStatusBadge'
+import AIMentorInsightPanel from './AIMentorInsightPanel'
 
 function formatNumber(value: number | null, suffix = '') {
   if (value === null) return 'Henüz yeterli veri yok'
@@ -127,6 +128,8 @@ export default function MentorSummary({
           )}
         </div>
       )}
+
+      <AIMentorInsightPanel studentId={alerts.studentId} />
 
       <div className="mt-4 grid gap-5 md:grid-cols-2">
         <div>
