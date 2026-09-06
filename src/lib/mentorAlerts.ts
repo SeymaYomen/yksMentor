@@ -1,8 +1,23 @@
-import { STUDENT_STATUS_RULES, type PerformanceSignal, type StudentStatusResult, type TaskSignal } from './studentStatus'
-import type { GoalMetricProgress, GoalProgressResult } from './goalProgress'
-import type { CompetencyMapResult, TopicCompetencyResult } from './competencyMap'
-import type { MeetingActionItem } from './meetingBriefing'
+import {
+  STUDENT_STATUS_RULES,
+  type PerformanceSignal,
+  type StudentStatusResult,
+  type TaskSignal,
+} from './studentStatus.ts'
 
+import type {
+  GoalMetricProgress,
+  GoalProgressResult,
+} from './goalProgress.ts'
+
+import type {
+  CompetencyMapResult,
+  TopicCompetencyResult,
+} from './competencyMap.ts'
+
+import type {
+  MeetingActionItem,
+} from './meetingBriefing.ts'
 export type MentorAlertType =
   | 'ACADEMIC_DECLINE'
   | 'GOAL_OFF_TRACK'
