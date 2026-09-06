@@ -19,7 +19,7 @@ test('Edge Function authenticated kullanıcıyı ve mentor-student ilişkisini s
   assert.match(edgeFunction, /supabase\.auth\.getUser\(\)/)
   assert.match(edgeFunction, /callerProfile\.role !== 'teacher'/)
   assert.match(edgeFunction, /canGenerateAIMentorInsight\([\s\S]*mentorId: studentProfile\.mentor_id/)
-  assert.match(edgeFunction, /return json\(403, \{ error: 'Bu öğrenci için AI mentor yorumu oluşturma yetkiniz yok\.'/)
+  assert.match(edgeFunction, /return json\(403, \{ code: 'FORBIDDEN'/)
 })
 
 test('client yalnız studentId gönderir ve server client rol iddiasını kabul etmez', () => {
@@ -51,6 +51,6 @@ test('OpenAI API key client bundle kaynaklarında bulunmaz', () => {
 
   assert.doesNotMatch(clientBundleSources, /OPENAI_API_KEY|VITE_OPENAI|api\.openai\.com/)
   assert.match(provider, /api\.openai\.com\/v1\/responses/)
-  assert.match(edgeFunction, /requiredEnvironment\('OPENAI_API_KEY'\)/)
-  assert.doesNotMatch(edgeFunction, /SUPABASE_SERVICE_ROLE_KEY/)
+  assert.match(edgeFunction, /loadAIMentorConfig\(\)/)
+  assert.doesNotMatch(edgeFunction, /serviceClient\.from\(/)
 })

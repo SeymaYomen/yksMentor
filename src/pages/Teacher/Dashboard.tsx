@@ -149,6 +149,7 @@ export default function TeacherDashboard() {
                 {selectedStudentData && (
                   <>
                     <MentorSummary
+                      displayName={selectedStudentData.username}
                       status={selectedStudentData.status}
                       goalProgress={selectedStudentData.goalProgress}
                       competencyMap={selectedStudentData.competencyMap}

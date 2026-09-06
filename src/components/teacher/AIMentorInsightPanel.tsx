@@ -1,26 +1,40 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { aiMentorInsightService } from '../../services/aiMentorService'
 import type { AIMentorInsightResponse } from '../../lib/aiMentorOutput'
 
-export default function AIMentorInsightPanel({ studentId }: { studentId: string }) {
+import { isAIMentorInsightStale } from '../../lib/aiMentorContext'
+import { AIMentorServiceError, aiMentorErrorMessage } from '../../lib/aiMentorErrors'
+
+export default function AIMentorInsightPanel({
+  studentId,
+  currentFingerprint = null,
+}: {
+  studentId: string
+  currentFingerprint?: string | null
+}) {
+
   const [results, setResults] = useState<Record<string, AIMentorInsightResponse>>({})
-  const [loadingStudentId, setLoadingStudentId] = useState<string | null>(null)
+  const pending = useRef(new Set<string>())
+  const [loadingStudents, setLoadingStudents] = useState<Record<string, boolean>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const result = results[studentId]
-  const loading = loadingStudentId === studentId
+  const loading = Boolean(loadingStudents[studentId])
+  const stale = isAIMentorInsightStale(currentFingerprint, result?.contextFingerprint ?? null)
   const error = errors[studentId]
 
   async function generateInsight() {
-    setLoadingStudentId(studentId)
+    if (pending.current.has(studentId)) return
+    pending.current.add(studentId)
+    setLoadingStudents(current => ({ ...current, [studentId]: true }))
     setErrors(current => ({ ...current, [studentId]: '' }))
     try {
       const response = await aiMentorInsightService.generateMentorInsight(studentId)
       setResults(current => ({ ...current, [studentId]: response }))
     } catch (caughtError) {
-      console.error('AI mentor insight could not be generated:', caughtError)
-      setErrors(current => ({ ...current, [studentId]: 'AI yorumu oluşturulamadı. Mevcut mentor değerlendirmeleri kullanılmaya devam edebilir.' }))
+      setErrors(current => ({ ...current, [studentId]: aiMentorErrorMessage(caughtError instanceof AIMentorServiceError ? caughtError.code : 'INTERNAL_ERROR') }))
     } finally {
-      setLoadingStudentId(null)
+      pending.current.delete(studentId)
+      setLoadingStudents(current => ({ ...current, [studentId]: false }))
     }
   }
 
@@ -41,6 +55,10 @@ export default function AIMentorInsightPanel({ studentId }: { studentId: string 
         </button>
       </div>
 
+      {result && stale && (
+        <p className="mt-3 text-sm text-amber-800" role="status">Yeni öğrenci verileri var. Bu yorum önceki verilere göre oluşturuldu.</p>
+      )}
+      {result && currentFingerprint && !stale && <p className="mt-3 text-xs text-emerald-700">Güncel</p>}
       {error && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
           {error}

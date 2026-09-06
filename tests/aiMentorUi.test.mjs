@@ -13,7 +13,7 @@ test('AI çağrısı yalnız mentor butonuyla başlatılır', () => {
 
 test('AI başarısızlığı mevcut mentor özetini ve domain çıktılarını bozmaz', () => {
   assert.match(insightPanel, /catch \(caughtError\)/)
-  assert.match(insightPanel, /Mevcut mentor değerlendirmeleri kullanılmaya devam edebilir/)
+  assert.match(insightPanel, /aiMentorErrorMessage/)
   assert.match(mentorSummary, /<AIMentorInsightPanel/)
   assert.match(mentorSummary, /Mentor Özeti/)
   assert.match(mentorSummary, /Hedefe İlerleme/)

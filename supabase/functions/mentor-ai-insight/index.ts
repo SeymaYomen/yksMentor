@@ -1,12 +1,14 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.106.2'
 import { canGenerateAIMentorInsight } from '../../../src/lib/aiMentorAuthorization.ts'
-import { buildAIMentorContext } from '../../../src/lib/aiMentorContext.ts'
+import { buildAIMentorContext, createAIMentorContextFingerprint } from '../../../src/lib/aiMentorContext.ts'
 import { calculateCompetencyMap, type TopicPerformanceSignal } from '../../../src/lib/competencyMap.ts'
 import { calculateGoalProgress, type StudentGoal } from '../../../src/lib/goalProgress.ts'
 import type { MeetingActionItem } from '../../../src/lib/meetingBriefing.ts'
 import { calculateMentorAlerts } from '../../../src/lib/mentorAlerts.ts'
 import { calculateStudentStatus, type MeetingSignal, type PerformanceSignal, type TaskSignal } from '../../../src/lib/studentStatus.ts'
-import { createOpenAIMentorProvider } from '../_shared/aiMentorProvider.ts'
+import { AIMentorServiceError, type AIMentorErrorCode } from '../../../src/lib/aiMentorErrors.ts'
+import { loadAIMentorConfig } from '../_shared/aiMentorConfig.ts'
+import { AIMentorProviderError, createOpenAIMentorProvider } from '../_shared/aiMentorProvider.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,7 +47,7 @@ function json(status: number, body: Record<string, unknown>) {
 
 function requiredEnvironment(name: string) {
   const value = Deno.env.get(name)
-  if (!value) throw new Error(`${name}_MISSING`)
+  if (!value) throw new AIMentorServiceError('NOT_CONFIGURED')
   return value
 }
 
@@ -53,19 +55,33 @@ function isUuid(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
-async function contextFingerprint(context: unknown) {
-  const bytes = new TextEncoder().encode(JSON.stringify(context))
-  const digest = await crypto.subtle.digest('SHA-256', bytes)
-  return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('')
+const errorStatus: Record<AIMentorErrorCode, number> = {
+  BAD_REQUEST: 400, UNAUTHORIZED: 401, FORBIDDEN: 403, RATE_LIMITED: 429,
+  NOT_CONFIGURED: 503, PROVIDER_TIMEOUT: 504, PROVIDER_UNAVAILABLE: 502,
+  INVALID_AI_OUTPUT: 502, CONTEXT_LOAD_FAILED: 500, INTERNAL_ERROR: 500,
 }
 
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-  if (request.method !== 'POST') return json(405, { error: 'Yalnız POST isteği destekleniyor.' })
+  if (request.method !== 'POST') return json(405, { code: 'BAD_REQUEST' })
 
+  let serviceClient: ReturnType<typeof createClient> | null = null
+  let usageId: number | null = null
+  let model = ''
+  async function complete(status: 'succeeded' | 'failed', code: AIMentorErrorCode | null, usage?: { inputTokens: number | null; outputTokens: number | null; totalTokens: number | null }, latencyMs?: number) {
+    if (!serviceClient || usageId === null) return
+    try {
+      const { error } = await serviceClient.rpc('complete_ai_mentor_request', {
+        p_usage_id: usageId, p_request_status: status, p_model: model,
+        p_input_tokens: usage?.inputTokens ?? null, p_output_tokens: usage?.outputTokens ?? null,
+        p_total_tokens: usage?.totalTokens ?? null, p_latency_ms: latencyMs ?? null, p_error_code: code,
+      })
+      if (error) console.error('AI telemetry completion failed')
+    } catch { console.error('AI telemetry completion failed') }
+  }
   try {
     const authorization = request.headers.get('Authorization')
-    if (!authorization?.startsWith('Bearer ')) return json(401, { error: 'Oturum doğrulanamadı.' })
+    if (!authorization || !/^Bearer\s+\S+$/i.test(authorization)) return json(401, { code: 'UNAUTHORIZED' })
 
     let requestBody: Record<string, unknown>
     try {
@@ -73,10 +89,10 @@ Deno.serve(async request => {
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('invalid')
       requestBody = parsed as Record<string, unknown>
     } catch {
-      return json(400, { error: 'Geçersiz istek gövdesi.' })
+      return json(400, { code: 'BAD_REQUEST' })
     }
     if (Object.keys(requestBody).some(key => key !== 'studentId') || !isUuid(requestBody.studentId)) {
-      return json(400, { error: 'Geçerli bir öğrenci kimliği gerekli.' })
+      return json(400, { code: 'BAD_REQUEST' })
     }
 
     const supabase = createClient(
@@ -88,7 +104,7 @@ Deno.serve(async request => {
       },
     )
     const { data: authData, error: authError } = await supabase.auth.getUser()
-    if (authError || !authData.user) return json(401, { error: 'Oturum doğrulanamadı.' })
+    if (authError || !authData.user) return json(401, { code: 'UNAUTHORIZED' })
 
     const { data: callerProfile, error: callerError } = await supabase
       .from('profiles')
@@ -96,7 +112,7 @@ Deno.serve(async request => {
       .eq('id', authData.user.id)
       .maybeSingle()
     if (callerError || !callerProfile || callerProfile.role !== 'teacher') {
-      return json(403, { error: 'Bu işlem yalnız mentorlar tarafından kullanılabilir.' })
+      return json(403, { code: 'FORBIDDEN' })
     }
 
     const { data: studentProfileData, error: studentError } = await supabase
@@ -109,9 +125,23 @@ Deno.serve(async request => {
       { id: authData.user.id, role: callerProfile.role },
       { id: studentProfile.id, mentorId: studentProfile.mentor_id, role: studentProfile.role },
     )) {
-      return json(403, { error: 'Bu öğrenci için AI mentor yorumu oluşturma yetkiniz yok.' })
+      return json(403, { code: 'FORBIDDEN' })
     }
 
+    const config = loadAIMentorConfig()
+    model = config.model
+    serviceClient = createClient(requiredEnvironment('SUPABASE_URL'), requiredEnvironment('SUPABASE_SERVICE_ROLE_KEY'), {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+    const { data: claims, error: claimError } = await serviceClient.rpc('claim_ai_mentor_request', {
+      p_teacher_id: authData.user.id, p_provider: config.provider, p_model: config.model,
+      p_minute_limit: config.minuteLimit, p_daily_limit: config.dailyLimit,
+    })
+    const claim = claims?.[0]
+    if (claimError || !claim || typeof claim.allowed !== 'boolean') throw new AIMentorServiceError('INTERNAL_ERROR')
+    if (!claim.allowed) return json(429, { code: 'RATE_LIMITED', retryAfterSeconds: claim.retry_after_seconds })
+    if (!claim.usage_id) throw new AIMentorServiceError('INTERNAL_ERROR')
+    usageId = claim.usage_id
     const studentId = studentProfile.id
     const [performanceResult, taskResult, meetingResult, goalResult, actionItemResult, topicPerformanceResult, subjectResult, topicResult] = await Promise.all([
       supabase.from('performance').select('student_id, daily_hours, tyt_net, ayt_net, date, created_at').eq('student_id', studentId),
@@ -126,7 +156,7 @@ Deno.serve(async request => {
 
     const failedResult = [performanceResult, taskResult, meetingResult, goalResult, actionItemResult, topicPerformanceResult, subjectResult, topicResult]
       .find(result => result.error)
-    if (failedResult?.error) throw new Error('AI_CONTEXT_DATA_LOAD_FAILED')
+    if (failedResult?.error) throw new AIMentorServiceError('CONTEXT_LOAD_FAILED')
 
     const performance = (performanceResult.data ?? []) as PerformanceRow[]
     const tasks = (taskResult.data ?? []) as TaskRow[]
@@ -185,24 +215,26 @@ Deno.serve(async request => {
       competencyMap,
       mentorAlerts,
     })
-    const fingerprint = await contextFingerprint(context)
+    const fingerprint = await createAIMentorContextFingerprint(context)
     const provider = createOpenAIMentorProvider({
-      apiKey: requiredEnvironment('OPENAI_API_KEY'),
-      model: requiredEnvironment('OPENAI_MODEL'),
+      apiKey: config.apiKey,
+      model: config.model,
+      timeoutMs: config.timeoutMs,
     })
-    const insight = await provider.generateMentorInsight(context)
+    const providerResult = await provider.generateMentorInsight(context)
+    model = providerResult.model
+    await complete('succeeded', null, providerResult.usage, providerResult.latencyMs)
 
     return json(200, {
-      insight,
+      insight: providerResult.output,
       contextFingerprint: fingerprint,
       generatedAt: new Date().toISOString(),
       cached: false,
     })
   } catch (error) {
-    console.error('mentor-ai-insight failed', error instanceof Error ? error.message : 'unknown error')
-    if (error instanceof Error && (error.message.includes('_MISSING') || error.message === 'AI_SERVICE_NOT_CONFIGURED')) {
-      return json(503, { error: 'AI mentor servisi henüz yapılandırılmamış.' })
-    }
-    return json(502, { error: 'AI mentor yorumu şu anda oluşturulamadı.' })
+    const code = error instanceof AIMentorServiceError || error instanceof AIMentorProviderError ? error.code : 'INTERNAL_ERROR'
+    await complete('failed', code, undefined, error instanceof AIMentorProviderError ? error.latencyMs : undefined)
+    console.error('mentor-ai-insight failed', code)
+    return json(errorStatus[code], { code })
   }
 })

@@ -1,11 +1,14 @@
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import type { MetricComparison, StudentStatusResult, TrendDirection } from '../../lib/studentStatus'
 import type { GoalMetricProgress, GoalProgressResult } from '../../lib/goalProgress'
 import { selectCompetencyHighlights, type CompetencyMapResult, type TopicCompetencyResult } from '../../lib/competencyMap'
 import type { MentorAlertResult } from '../../lib/mentorAlerts'
 import StudentStatusBadge from './StudentStatusBadge'
 import AIMentorInsightPanel from './AIMentorInsightPanel'
-
+import {
+  buildAIMentorContext,
+  createAIMentorContextFingerprint,
+} from '../../lib/aiMentorContext'
 function formatNumber(value: number | null, suffix = '') {
   if (value === null) return 'Henüz yeterli veri yok'
   return `${new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(value)}${suffix}`
@@ -77,16 +80,30 @@ function CompetencyList({ title, topics, className }: { title: string; topics: T
 }
 
 export default function MentorSummary({
+  displayName,
   status,
   goalProgress,
   competencyMap,
   alerts,
 }: {
+  displayName: string
   status: StudentStatusResult
   goalProgress: GoalProgressResult
   competencyMap: CompetencyMapResult
   alerts: MentorAlertResult
 }) {
+  const context = useMemo(() => buildAIMentorContext({
+    displayName, studentStatus: status, goalProgress, competencyMap, mentorAlerts: alerts,
+  }), [displayName, status, goalProgress, competencyMap, alerts])
+  const [fingerprint, setFingerprint] = useState<{ context: typeof context; value: string } | null>(null)
+  const currentFingerprint = fingerprint?.context === context ? fingerprint.value : null
+  useEffect(() => {
+    let active = true
+    void createAIMentorContextFingerprint(context).then(value => {
+      if (active) setFingerprint({ context, value })
+    }).catch(() => { if (active) setFingerprint(null) })
+    return () => { active = false }
+  }, [context])
   const { metrics } = status
   const competencyHighlights = selectCompetencyHighlights(competencyMap)
 
@@ -129,7 +146,7 @@ export default function MentorSummary({
         </div>
       )}
 
-      <AIMentorInsightPanel studentId={alerts.studentId} />
+      <AIMentorInsightPanel studentId={alerts.studentId} currentFingerprint={currentFingerprint} />
 
       <div className="mt-4 grid gap-5 md:grid-cols-2">
         <div>
