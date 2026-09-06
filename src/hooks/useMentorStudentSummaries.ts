@@ -82,7 +82,7 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
       .select('*')
       .in('student_id', studentIds),
     loadTopicPerformanceSignals(studentIds).catch(caughtError => {
-      console.error('Academic competency data could not be loaded:', caughtError)
+      console.error('Academic competency data could not be loaded:')
       return []
     }),
   ])
@@ -166,7 +166,7 @@ export function useMentorStudentSummaries(teacherId?: string) {
     try {
       setStudents(await loadMentorStudentSummaries(teacherId))
     } catch (caughtError) {
-      console.error('Mentor student summaries could not be loaded:', caughtError)
+      console.error('Mentor student summaries could not be loaded:')
       setError(caughtError instanceof Error ? caughtError : new Error(String(caughtError)))
     } finally {
       setLoading(false)

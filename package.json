@@ -16,7 +16,10 @@
     "test:mentor-alerts": "node --test tests/mentorAlerts.test.mjs",
     "test:ai-mentor": "node --test tests/aiMentor*.test.mjs",
     "test": "node --test tests/*.test.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare:migrations": "node scripts/prepare-migrations.mjs",
+    "check:secrets": "node scripts/check-release-secrets.mjs",
+    "test:staging": "node scripts/verify-staging.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

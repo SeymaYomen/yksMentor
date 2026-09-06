@@ -27,10 +27,10 @@ export default function Meetings() {
     createActionItem,
     updateActionItemStatus,
   } = useMeetingGuidance(user?.role, user?.id, meetings)
-  
+
   const [students, setStudents] = useState<any[]>([])
   const [loadingStudents, setLoadingStudents] = useState(false)
-  
+
   // Form states for Teacher
   const [studentId, setStudentId] = useState('')
   const [title, setTitle] = useState('')
@@ -46,7 +46,7 @@ export default function Meetings() {
       getStudentsByTeacher(user.id)
         .then(s => setStudents(s || []))
         .catch(err => {
-          console.error('Öğrenciler yüklenirken hata:', err)
+          console.error('Öğrenciler yüklenirken hata:')
           setStudents([])
         })
         .finally(() => setLoadingStudents(false))
@@ -114,16 +114,16 @@ export default function Meetings() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
+
         {isTeacher && (
           <div className="lg:col-span-4">
             <Card className="border-t-4 border-t-blue-500">
               <h3 className="text-lg font-bold text-gray-800 mb-4">Yeni Görüşme Planla</h3>
               <form onSubmit={handleSchedule} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Öğrenci Seç</label>
-                  <select 
-                    value={studentId} 
+                  <label htmlFor="meetings-field-1" className="block text-sm font-semibold text-gray-700 mb-1">Öğrenci Seç</label>
+                  <select id="meetings-field-1"
+                    value={studentId}
                     onChange={e => setStudentId(e.target.value)}
                     disabled={loadingStudents}
                     className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition-all text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -142,31 +142,31 @@ export default function Meetings() {
                     )}
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Konu / Başlık</label>
-                  <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Örn: Haftalık Değerlendirme" />
+                  <label htmlFor="meetings-field-2" className="block text-sm font-semibold text-gray-700 mb-1">Konu / Başlık</label>
+                  <Input id="meetings-field-2" value={title} onChange={e => setTitle(e.target.value)} placeholder="Örn: Haftalık Değerlendirme" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Tarih</label>
-                  <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+                  <label htmlFor="meetings-field-3" className="block text-sm font-semibold text-gray-700 mb-1">Tarih</label>
+                  <Input id="meetings-field-3" type="date" value={date} onChange={e => setDate(e.target.value)} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Saat</label>
-                  <Input type="time" value={time} onChange={e => setTime(e.target.value)} />
+                  <label htmlFor="meetings-field-4" className="block text-sm font-semibold text-gray-700 mb-1">Saat</label>
+                  <Input id="meetings-field-4" type="time" value={time} onChange={e => setTime(e.target.value)} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Toplantı Linki <span className="text-xs text-gray-400 font-normal">(İsteğe bağlı)</span></label>
-                  <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="Zoom, Meet vb." />
+                  <label htmlFor="meetings-field-5" className="block text-sm font-semibold text-gray-700 mb-1">Toplantı Linki <span className="text-xs text-gray-400 font-normal">(İsteğe bağlı)</span></label>
+                  <Input id="meetings-field-5" value={url} onChange={e => setUrl(e.target.value)} placeholder="Zoom, Meet vb." />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Açıklama <span className="text-xs text-gray-400 font-normal">(İsteğe bağlı)</span></label>
-                  <textarea 
-                    value={description} 
+                  <label htmlFor="meetings-field-6" className="block text-sm font-semibold text-gray-700 mb-1">Açıklama <span className="text-xs text-gray-400 font-normal">(İsteğe bağlı)</span></label>
+                  <textarea id="meetings-field-6"
+                    value={description}
                     onChange={e => setDescription(e.target.value)}
                     className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-200 focus:border-purple-400 outline-none transition-all text-gray-700"
                     rows={2}
@@ -195,7 +195,7 @@ export default function Meetings() {
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
               Yaklaşan Görüşmeler
             </h3>
-            
+
             {loading ? (
               <div className="flex justify-center p-8"><Spinner /></div>
             ) : upcomingMeetings.length === 0 ? (
@@ -343,7 +343,7 @@ export default function Meetings() {
                         </span>
                       </div>
                     </div>
-                    
+
                     {/* Görüşme Notu / Ödev ve Değerlendirmeler */}
                     {m.description && (
                       <div className="mt-2 text-sm bg-white p-3 rounded-lg border border-gray-200/60 shadow-inner">

@@ -292,7 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (supabaseClient) await supabaseClient.auth.signOut()
     } catch (error) {
-      console.error('Supabase çıkış isteği tamamlanamadı; yerel oturum yine de temizlendi.', error)
+      console.error('Supabase çıkış isteği tamamlanamadı; yerel oturum yine de temizlendi.')
     } finally {
       ++syncVersion.current
       localStorage.removeItem('yks_user')

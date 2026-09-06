@@ -88,37 +88,37 @@ export default function Register() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="flex gap-4 p-2 bg-purple-50/50 rounded-xl border border-purple-100/50">
             {(['student', 'teacher'] as UserRole[]).map(option => (
-              <label key={option} className={`flex-1 flex items-center justify-center cursor-pointer py-2 rounded-lg transition-all ${role === option ? 'bg-white shadow-sm text-purple-700 font-semibold' : 'text-gray-500 hover:bg-white/50'}`}>
-                <input type="radio" name="role" value={option} checked={role === option} onChange={() => setRole(option)} className="hidden" />
+              <label key={option} className={`flex-1 flex items-center justify-center cursor-pointer focus-within:ring-2 focus-within:ring-purple-500 py-2 rounded-lg transition-all ${role === option ? 'bg-white shadow-sm text-purple-700 font-semibold' : 'text-gray-500 hover:bg-white/50'}`}>
+                <input type="radio" name="role" value={option} checked={role === option} onChange={() => setRole(option)} className="sr-only" />
                 <span className="text-sm">{option === 'student' ? 'Öğrenci' : 'Öğretmen'}</span>
               </label>
             ))}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1 ml-1">Kullanıcı Adı</label>
-            <Input autoComplete="username" value={username} onChange={event => setUsername(event.target.value)} placeholder="ornek_kullanici" />
+            <label htmlFor="register-field-1" className="block text-sm font-semibold text-gray-700 mb-1 ml-1">Kullanıcı Adı</label>
+            <Input id="register-field-1" autoComplete="username" value={username} onChange={event => setUsername(event.target.value)} placeholder="ornek_kullanici" />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1 ml-1">E-posta</label>
-            <Input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="ornek@ogrenci.com" />
+            <label htmlFor="register-field-2" className="block text-sm font-semibold text-gray-700 mb-1 ml-1">E-posta</label>
+            <Input id="register-field-2" type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="ornek@ogrenci.com" />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1 ml-1">Şifre</label>
-            <Input type="password" autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)} placeholder="En az 6 karakter" />
+            <label htmlFor="register-field-3" className="block text-sm font-semibold text-gray-700 mb-1 ml-1">Şifre</label>
+            <Input id="register-field-3" type="password" autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)} placeholder="En az 6 karakter" />
           </div>
 
           {role === 'student' ? (
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Mentor Katılım Kodu <span className="font-normal text-gray-400">(isteğe bağlı)</span></label>
+              <label htmlFor="register-field-4" className="block text-sm font-semibold text-gray-700 mb-1">Mentor Katılım Kodu <span className="font-normal text-gray-400">(isteğe bağlı)</span></label>
               <p className="mb-2 text-xs text-gray-500">Mevcut bir mentora/öğretmene bağlanmak içindir; hesap rolünüzü değiştirmez.</p>
-              <Input value={mentorJoinCode} onChange={event => setMentorJoinCode(event.target.value)} placeholder="Mentorunuzun katılım kodu" />
+              <Input id="register-field-4" value={mentorJoinCode} onChange={event => setMentorJoinCode(event.target.value)} placeholder="Mentorunuzun katılım kodu" />
             </div>
           ) : (
             <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
-              <label className="block text-sm font-semibold text-purple-900 mb-1">Tek Kullanımlık Öğretmen Kayıt Davet Kodu</label>
+              <label htmlFor="register-field-5" className="block text-sm font-semibold text-purple-900 mb-1">Tek Kullanımlık Öğretmen Kayıt Davet Kodu</label>
               <p className="mb-2 text-xs text-purple-700">Yalnızca yetkili tarafından verilen, süreli öğretmen etkinleştirme kodudur. Mentor katılım kodundan ayrıdır.</p>
-              <Input autoComplete="one-time-code" value={teacherInviteCode} onChange={event => setTeacherInviteCode(event.target.value)} placeholder="Özel öğretmen davet kodu" />
+              <Input id="register-field-5" autoComplete="one-time-code" value={teacherInviteCode} onChange={event => setTeacherInviteCode(event.target.value)} placeholder="Özel öğretmen davet kodu" />
             </div>
           )}
 

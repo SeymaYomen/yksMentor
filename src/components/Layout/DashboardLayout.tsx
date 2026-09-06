@@ -13,9 +13,9 @@ export default function DashboardLayout() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50/50 to-pink-50 text-gray-900">
       <Navbar />
-      <div className="container container-max mx-auto px-4 py-8 flex flex-col md:flex-row gap-6">
+      <div className="container container-max mx-auto px-4 pt-8 pb-28 md:pb-8 flex flex-col md:flex-row gap-6">
         <Sidebar role={user.role} />
-        <main className="flex-1 w-full">
+        <main className="min-w-0 flex-1 w-full">
           <Outlet />
         </main>
       </div>

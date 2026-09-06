@@ -99,7 +99,7 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
           .in('student_id', studentIds)
           .eq('is_active', true),
         loadTopicPerformanceSignals(studentIds).catch(caughtError => {
-          console.error('Meeting academic competency data could not be loaded:', caughtError)
+          console.error('Meeting academic competency data could not be loaded:')
           return []
         }),
       ])
@@ -115,7 +115,7 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
       setGoals((goalResult.data ?? []) as StudentGoal[])
       setTopicPerformance(topicPerformanceResult)
     } catch (caughtError) {
-      console.error('Meeting guidance data could not be loaded:', caughtError)
+      console.error('Meeting guidance data could not be loaded:')
       setError(caughtError instanceof Error ? caughtError : new Error(String(caughtError)))
     } finally {
       setLoading(false)

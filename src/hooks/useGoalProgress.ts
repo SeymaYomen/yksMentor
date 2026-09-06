@@ -49,7 +49,7 @@ export function useGoalProgress(studentId: string, studentStatus?: StudentStatus
       setGoal((goalResult.data as StudentGoal | null) ?? null)
       setPerformance((performanceResult.data ?? []) as GoalPerformanceRow[])
     } catch (caughtError) {
-      console.error('Goal progress could not be loaded:', caughtError)
+      console.error('Goal progress could not be loaded:')
       setError(caughtError instanceof Error ? caughtError : new Error(String(caughtError)))
     } finally {
       setLoading(false)

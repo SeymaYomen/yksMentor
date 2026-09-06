@@ -19,7 +19,7 @@ export default function PerformanceForm({ studentId }: { studentId: string }) {
       showError('Supabase yapılandırılmamış.')
       return
     }
-    
+
     const dHours = Number(dailyHours)
     const tNet = Number(tytNet)
     const aNet = Number(aytNet)
@@ -60,7 +60,7 @@ export default function PerformanceForm({ studentId }: { studentId: string }) {
       showError('Kayıt sırasında hata oluştu: ' + error.message)
       return
     }
-    
+
     // YENİ KAYIT EKLENİNCE GRAFİĞİ TETİKLEMEK İÇİN BİR OLAY (EVENT) FIRLATABİLİRİZ
     window.dispatchEvent(new Event('performance_updated'))
     if (topicEntries.length > 0) window.dispatchEvent(new Event('topic_performance_updated'))
@@ -76,45 +76,45 @@ export default function PerformanceForm({ studentId }: { studentId: string }) {
     <form onSubmit={handleSubmit} className="space-y-4 bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label htmlFor="performanceform-field-1" className="block text-sm font-semibold text-gray-700 mb-1">
             ⏱ Çalışma Saati
           </label>
-          <Input 
-            type="number" 
+          <Input id="performanceform-field-1"
+            type="number"
             step="0.5"
             min="0"
             max="24"
-            value={dailyHours} 
-            onChange={e => setDailyHours(e.target.value)} 
-            placeholder="Örn: 4.5" 
+            value={dailyHours}
+            onChange={e => setDailyHours(e.target.value)}
+            placeholder="Örn: 4.5"
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label htmlFor="performanceform-field-2" className="block text-sm font-semibold text-gray-700 mb-1">
             🎯 TYT Net
           </label>
-          <Input 
-            type="number" 
+          <Input id="performanceform-field-2"
+            type="number"
             step="0.25"
             min="0"
             max="120"
-            value={tytNet} 
-            onChange={e => setTytNet(e.target.value)} 
-            placeholder="Maks: 120" 
+            value={tytNet}
+            onChange={e => setTytNet(e.target.value)}
+            placeholder="Maks: 120"
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label htmlFor="performanceform-field-3" className="block text-sm font-semibold text-gray-700 mb-1">
             🚀 AYT Net
           </label>
-          <Input 
-            type="number" 
+          <Input id="performanceform-field-3"
+            type="number"
             step="0.25"
             min="0"
             max="80"
-            value={aytNet} 
-            onChange={e => setAytNet(e.target.value)} 
-            placeholder="Maks: 80" 
+            value={aytNet}
+            onChange={e => setAytNet(e.target.value)}
+            placeholder="Maks: 80"
           />
         </div>
       </div>

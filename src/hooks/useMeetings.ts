@@ -31,7 +31,7 @@ export function useMeetings(role: UserRole | undefined, userId: string | undefin
     }
     setLoading(true)
     setError(null)
-    
+
     // Fetch meetings
     let query = supabase.from('meetings').select('*, profiles!meetings_student_id_fkey(username)')
     if (role === 'teacher') {
@@ -41,11 +41,11 @@ export function useMeetings(role: UserRole | undefined, userId: string | undefin
     }
 
     const { data, error } = await query.order('scheduled_at', { ascending: true })
-    
+
     if (!error && data) {
       setMeetings(data as unknown as Meeting[])
     } else if (error) {
-      console.error('Meetings could not be loaded:', error)
+      console.error('Meetings could not be loaded:')
       setError(new Error(error.message))
     }
     setLoading(false)
@@ -53,7 +53,7 @@ export function useMeetings(role: UserRole | undefined, userId: string | undefin
 
   useEffect(() => {
     loadMeetings()
-    
+
     const handleUpdate = () => loadMeetings()
     window.addEventListener('meetings_updated', handleUpdate)
     return () => window.removeEventListener('meetings_updated', handleUpdate)

@@ -51,7 +51,7 @@ export default function TopicCompetencyMap({ studentId }: { studentId: string })
           <p className="text-xs text-gray-500">Son ölçümlerdeki gerçek konu sonuçlarından hesaplanır.</p>
         </div>
         {subjectOptions.length > 1 && (
-          <select value={selectedSubject} onChange={event => setSelectedSubject(event.target.value)} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
+          <select aria-label="Ders filtresi" value={selectedSubject} onChange={event => setSelectedSubject(event.target.value)} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
             {subjectOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
           </select>
         )}

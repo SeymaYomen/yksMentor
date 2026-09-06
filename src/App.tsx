@@ -1,14 +1,14 @@
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import AuthLayout from './components/Layout/AuthLayout'
 import DashboardLayout from './components/Layout/DashboardLayout'
 import Login from './pages/Auth/Login'
 import Register from './pages/Auth/Register'
-import TeacherDashboard from './pages/Teacher/Dashboard'
-import StudentDashboard from './pages/Student/Dashboard'
-import Meetings from './pages/Meetings'
+const TeacherDashboard = lazy(() => import('./pages/Teacher/Dashboard'))
+const StudentDashboard = lazy(() => import('./pages/Student/Dashboard'))
+const Meetings = lazy(() => import('./pages/Meetings'))
 import NotFound from './pages/NotFound'
-import TeacherInviteActivation from './pages/Auth/TeacherInviteActivation'
+const TeacherInviteActivation = lazy(() => import('./pages/Auth/TeacherInviteActivation'))
 import { PublicRoute, ProtectedRoute } from './components/ProtectedRoute'
 import { useAuth } from './hooks/useAuth'
 
@@ -21,6 +21,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-gray-900">
+      <Suspense fallback={<div role="status" className="p-6 text-center">Yükleniyor...</div>}>
       <Routes>
         <Route
           path="/"
@@ -41,13 +42,14 @@ export default function App() {
           <Route path="/student/activate-teacher" element={<ProtectedRoute requiredRole="student"><TeacherInviteActivation /></ProtectedRoute>} />
           <Route path="/teacher" element={<ProtectedRoute requiredRole="teacher"><TeacherDashboard /></ProtectedRoute>} />
           <Route path="/teacher/meetings" element={<ProtectedRoute requiredRole="teacher"><Meetings /></ProtectedRoute>} />
-          
+
           <Route path="/student" element={<ProtectedRoute requiredRole="student"><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/meetings" element={<ProtectedRoute requiredRole="student"><Meetings /></ProtectedRoute>} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </div>
   )
 }

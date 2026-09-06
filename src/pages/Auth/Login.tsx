@@ -57,12 +57,12 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1 ml-1">E-posta</label>
-            <Input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="ornek@ogrenci.com" />
+            <label htmlFor="login-field-1" className="block text-sm font-semibold text-gray-700 mb-1 ml-1">E-posta</label>
+            <Input id="login-field-1" type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="ornek@ogrenci.com" />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1 ml-1">Şifre</label>
-            <Input type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} placeholder="••••••••" />
+            <label htmlFor="login-field-2" className="block text-sm font-semibold text-gray-700 mb-1 ml-1">Şifre</label>
+            <Input id="login-field-2" type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} placeholder="••••••••" />
           </div>
 
           <label className="flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm text-gray-700">

@@ -151,7 +151,7 @@ export default function GoalForm({ studentId, goal, onSaved, onCancel }: Props) 
       </div>
 
       <p className="text-xs text-gray-500">Üniversite/bölüm/sıralama veya TYT/AYT net hedeflerinden size uygun olanları doldurun.</p>
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       <div className="flex flex-wrap justify-end gap-2">
         {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>İptal</Button>}
         <Button type="submit" loading={submitting}>{goal ? 'Hedefi değiştir' : 'Hedefi belirle'}</Button>

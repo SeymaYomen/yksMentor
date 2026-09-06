@@ -29,7 +29,7 @@ export function useCompetencyMap(studentId: string) {
       const rows = await loadTopicPerformanceSignals([studentId])
       setCompetencyMap(calculateCompetencyMap(rows))
     } catch (caughtError) {
-      console.error('Competency map could not be loaded:', caughtError)
+      console.error('Competency map could not be loaded:')
       setCompetencyMap(EMPTY_MAP)
       setError(caughtError instanceof Error ? caughtError : new Error(String(caughtError)))
     } finally {

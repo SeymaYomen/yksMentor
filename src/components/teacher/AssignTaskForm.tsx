@@ -75,18 +75,18 @@ export default function AssignTaskForm({ students, selectedStudent }: Props) {
 
       <form onSubmit={handleCreate} className="space-y-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1 ml-1">Görev Başlığı / Açıklaması</label>
-          <Input 
-            value={title} 
-            onChange={e => setTitle(e.target.value)} 
-            placeholder="Örn: TYT Matematik ilk 3 konu denemesi çözülecek" 
+          <label htmlFor="assigntaskform-field-1" className="block text-sm font-semibold text-gray-700 mb-1 ml-1">Görev Başlığı / Açıklaması</label>
+          <Input id="assigntaskform-field-1"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Örn: TYT Matematik ilk 3 konu denemesi çözülecek"
           />
         </div>
         <div className="rounded-xl border border-purple-100 bg-purple-50/40 p-3">
           <div className="mb-2 text-sm font-semibold text-gray-700">Akademik bağlantı <span className="font-normal text-gray-400">(isteğe bağlı)</span></div>
           {catalogError ? <p className="text-xs text-red-600">Ders ve konu kataloğu yüklenemedi.</p> : (
             <div className="grid gap-2">
-              <select
+              <select aria-label="Sınav türü"
                 value={examType}
                 disabled={catalogLoading}
                 onChange={event => {
@@ -101,7 +101,7 @@ export default function AssignTaskForm({ students, selectedStudent }: Props) {
                 <option value="AYT">AYT</option>
               </select>
               {examType && (
-                <select
+                <select aria-label="Ders"
                   value={subjectId}
                   onChange={event => { setSubjectId(event.target.value); setTopicId('') }}
                   className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
@@ -111,7 +111,7 @@ export default function AssignTaskForm({ students, selectedStudent }: Props) {
                 </select>
               )}
               {subjectId && (
-                <select value={topicId} onChange={event => setTopicId(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
+                <select aria-label="Konu" value={topicId} onChange={event => setTopicId(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
                   <option value="">Yalnız ders</option>
                   {topics.filter(topic => topic.subject_id === subjectId).map(topic => <option key={topic.id} value={topic.id}>{topic.name}</option>)}
                 </select>
@@ -120,11 +120,11 @@ export default function AssignTaskForm({ students, selectedStudent }: Props) {
           )}
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1 ml-1">Son Tarih <span className="text-gray-400 font-normal">(isteğe bağlı)</span></label>
-          <Input 
-            type="date" 
-            value={dueDate} 
-            onChange={e => setDueDate(e.target.value)} 
+          <label htmlFor="assigntaskform-field-2" className="block text-sm font-semibold text-gray-700 mb-1 ml-1">Son Tarih <span className="text-gray-400 font-normal">(isteğe bağlı)</span></label>
+          <Input id="assigntaskform-field-2"
+            type="date"
+            value={dueDate}
+            onChange={e => setDueDate(e.target.value)}
           />
         </div>
         <div className="pt-2">

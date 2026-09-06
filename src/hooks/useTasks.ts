@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 export type Task = {
@@ -23,36 +23,51 @@ export type TaskAcademicLink = {
 export function useTasks(studentId?: string) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const requestVersion = useRef(0)
+  const currentStudent = useRef(studentId)
+  currentStudent.current = studentId
 
   useEffect(() => {
-    if (!studentId) return
-    fetchTasks()
+    void fetchTasks()
 
     // AssignTaskForm'dan fırlatılan olayı dinle → otomatik yenile
     const handleUpdate = () => fetchTasks()
     window.addEventListener('tasks_updated', handleUpdate)
-    return () => window.removeEventListener('tasks_updated', handleUpdate)
+    return () => {
+      requestVersion.current += 1
+      window.removeEventListener('tasks_updated', handleUpdate)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId])
 
   async function fetchTasks() {
+    const version = ++requestVersion.current
+    const isCurrent = () => version === requestVersion.current && currentStudent.current === studentId
+    setError(null)
     if (!studentId || !supabase) {
       setTasks([])
+      setLoading(false)
+      if (studentId) setError('Görevler şu anda yüklenemiyor.')
       return
     }
     setLoading(true)
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*, subject:exam_subjects(name), topic:exam_topics(name)')
-      .eq('student_id', studentId)
-      .order('created_at', { ascending: false })
-    setLoading(false)
-    if (error) {
-      console.error(error)
-      setTasks([])
-      return
+    try {
+      const { data, error: queryError } = await supabase
+        .from('tasks')
+        .select('*, subject:exam_subjects(name), topic:exam_topics(name)')
+        .eq('student_id', studentId)
+        .order('created_at', { ascending: false })
+      if (queryError) throw queryError
+      if (isCurrent()) setTasks((data ?? []) as Task[])
+    } catch {
+      if (isCurrent()) {
+        setTasks([])
+        setError('Görevler yüklenemedi. Lütfen tekrar deneyin.')
+      }
+    } finally {
+      if (isCurrent()) setLoading(false)
     }
-    setTasks(data as any)
   }
 
   async function createTask(student_id: string, title: string, due_date?: string, academic?: TaskAcademicLink) {
@@ -89,7 +104,7 @@ export function useTasks(studentId?: string) {
     return data
   }
 
-  return { tasks, loading, fetchTasks, createTask, toggleTaskStatus }
+  return { tasks, loading, error, fetchTasks, createTask, toggleTaskStatus }
 }
 
 export async function getStudentsByTeacher(teacherId: string) {

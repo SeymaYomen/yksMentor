@@ -1,0 +1,4 @@
+project_id = "yks-mentor-local"
+
+[functions.mentor-ai-insight]
+verify_jwt = true

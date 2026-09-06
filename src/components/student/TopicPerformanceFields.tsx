@@ -90,7 +90,7 @@ export default function TopicPerformanceFields({ entries, onChange }: Props) {
           ) : (
             <>
               <div className="grid gap-2 sm:grid-cols-3">
-                <select
+                <select aria-label="Sınav türü"
                   value={examType}
                   disabled={loading}
                   onChange={event => {
@@ -103,7 +103,7 @@ export default function TopicPerformanceFields({ entries, onChange }: Props) {
                   <option value="TYT">TYT</option>
                   <option value="AYT">AYT</option>
                 </select>
-                <select
+                <select aria-label="Ders"
                   value={subjectId}
                   disabled={loading}
                   onChange={event => { setSubjectId(event.target.value); setTopicId('') }}
@@ -112,7 +112,7 @@ export default function TopicPerformanceFields({ entries, onChange }: Props) {
                   <option value="">Ders seçin</option>
                   {visibleSubjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
                 </select>
-                <select
+                <select aria-label="Konu"
                   value={topicId}
                   disabled={!subjectId}
                   onChange={event => setTopicId(event.target.value)}
@@ -123,9 +123,9 @@ export default function TopicPerformanceFields({ entries, onChange }: Props) {
                 </select>
               </div>
               <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
-                <Input type="number" min="0" step="1" value={correct} onChange={event => setCorrect(event.target.value)} placeholder="Doğru" />
-                <Input type="number" min="0" step="1" value={wrong} onChange={event => setWrong(event.target.value)} placeholder="Yanlış" />
-                <Input type="number" min="0" step="1" value={blank} onChange={event => setBlank(event.target.value)} placeholder="Boş" />
+                <Input aria-label="Doğru sayısı" type="number" min="0" step="1" value={correct} onChange={event => setCorrect(event.target.value)} placeholder="Doğru" />
+                <Input aria-label="Yanlış sayısı" type="number" min="0" step="1" value={wrong} onChange={event => setWrong(event.target.value)} placeholder="Yanlış" />
+                <Input aria-label="Boş sayısı" type="number" min="0" step="1" value={blank} onChange={event => setBlank(event.target.value)} placeholder="Boş" />
                 <button type="button" onClick={addEntry} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700">Ekle</button>
               </div>
             </>

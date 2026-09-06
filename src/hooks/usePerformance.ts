@@ -55,7 +55,7 @@ export default function usePerformance(studentId: string) {
         if (!cancelled) setData(mapped)
       } catch (err) {
         if (!cancelled) {
-          console.error('usePerformance fetch error:', err)
+          console.error('usePerformance fetch error:')
           setError(err)
         }
       } finally {

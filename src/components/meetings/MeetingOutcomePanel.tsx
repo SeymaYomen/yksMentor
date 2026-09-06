@@ -81,8 +81,8 @@ export default function MeetingOutcomePanel({ meeting, items, isTeacher, loading
 
       {isTeacher ? (
         <div className="mt-3">
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Kısa görüşme özeti</label>
-          <textarea
+          <label htmlFor={`meeting-summary-${meeting.id}`} className="text-xs font-bold uppercase tracking-wider text-gray-500">Kısa görüşme özeti</label>
+          <textarea id={`meeting-summary-${meeting.id}`}
             value={summary}
             onChange={event => setSummary(event.target.value)}
             rows={3}
@@ -159,13 +159,14 @@ export default function MeetingOutcomePanel({ meeting, items, isTeacher, loading
       {isTeacher && (
         <form onSubmit={addItem} className="mt-4 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/50 p-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <select value={kind} onChange={event => setKind(event.target.value as MeetingActionItem['kind'])} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-indigo-400">
+            <select aria-label="Madde türü" value={kind} onChange={event => setKind(event.target.value as MeetingActionItem['kind'])} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-indigo-400">
               <option value="action">Alınan karar / aksiyon</option>
               <option value="followup">Sonraki görüşmede kontrol</option>
             </select>
             <Input aria-label="İsteğe bağlı son tarih" type="date" value={dueDate} onChange={event => setDueDate(event.target.value)} />
           </div>
           <textarea
+            aria-label="Karar veya takip maddesi"
             value={itemText}
             onChange={event => setItemText(event.target.value)}
             rows={2}

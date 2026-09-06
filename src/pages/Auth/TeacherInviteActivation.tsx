@@ -43,8 +43,8 @@ export default function TeacherInviteActivation() {
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="mb-1 ml-1 block text-sm font-semibold text-gray-700">Tek Kullanımlık Öğretmen Davet Kodu</label>
-            <Input
+            <label htmlFor="teacherinviteactivation-field-1" className="mb-1 ml-1 block text-sm font-semibold text-gray-700">Tek Kullanımlık Öğretmen Davet Kodu</label>
+            <Input id="teacherinviteactivation-field-1"
               value={inviteCode}
               onChange={event => setInviteCode(event.target.value)}
               placeholder="Size iletilen özel davet kodu"

@@ -12,7 +12,7 @@ export default function Button({ variant = 'primary', className = '', loading = 
     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 hover:shadow-lg hover:-translate-y-0.5'
     : 'bg-white/50 text-blue-600 hover:bg-white/80 hover:shadow-sm'
   return (
-    <button className={`${base} ${styles} ${className}`.trim()} disabled={loading || props.disabled} {...props}>
+    <button className={`${base} ${styles} ${className}`.trim()} {...props} disabled={loading || props.disabled} aria-busy={loading}>
       {loading ? <Spinner size={16} /> : children}
     </button>
   )

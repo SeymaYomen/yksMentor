@@ -5,7 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 export default function TaskList({ studentId, isTeacherView = false }: { studentId?: string, isTeacherView?: boolean }) {
   const auth = useAuth()
   const id = studentId || auth.user?.id
-  const { tasks, loading, toggleTaskStatus } = useTasks(id)
+  const { tasks, loading, error, fetchTasks, toggleTaskStatus } = useTasks(id)
 
   if (!id) return <div className="text-sm text-gray-500">Kullanıcı bulunamadı.</div>
 
@@ -24,6 +24,11 @@ export default function TaskList({ studentId, isTeacherView = false }: { student
       {loading ? (
         <div className="flex justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        </div>
+      ) : error ? (
+        <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
+          <p>{error}</p>
+          <button type="button" onClick={() => void fetchTasks()} className="mt-2 rounded-lg bg-white px-3 py-2 font-semibold">Tekrar dene</button>
         </div>
       ) : tasks.length === 0 ? (
         <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
@@ -107,7 +112,7 @@ function TaskItem({ task, toggle, readOnly = false }: { task: Task; toggle: (id:
           )}
           {task.due_date && (
             <div className={`text-xs flex items-center gap-1 ${
-              isCompleted ? 'text-gray-400' : 
+              isCompleted ? 'text-gray-400' :
               new Date(task.due_date) < new Date() ? 'text-red-500 font-medium' : 'text-indigo-500'
             }`}>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

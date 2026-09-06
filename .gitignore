@@ -6,8 +6,8 @@ dist/
 
 # Environment variables (hassas bilgiler repoya girmesin)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # IDE
 .vscode/
@@ -19,3 +19,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local Supabase state and generated migration copies
+supabase/.temp/
+supabase/.branches/
+supabase/migrations/
