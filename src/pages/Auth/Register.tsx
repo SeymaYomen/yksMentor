@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
-import Card from '../../components/ui/Card'
 import { useAuth } from '../../hooks/useAuth'
 import type { UserRole } from '../../hooks/useAuth'
 import { showSuccess, showError } from '../../components/ui/ToastButton'
@@ -78,8 +77,7 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
-      <Card className="w-full max-w-md border-t-4 border-t-purple-500">
+    <div>
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600 mb-2">Aramıza Katıl</h2>
           <p className="text-sm text-gray-500">YKS hedeflerine ulaşmak için ilk adımı at.</p>
@@ -127,7 +125,6 @@ export default function Register() {
             <Link to="/login" className="text-sm font-medium text-purple-600 hover:text-purple-800 transition-colors">Zaten hesabım var</Link>
           </div>
         </form>
-      </Card>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { authenticatedDestination } from '../lib/teacherActivationIntent'
 
 export function ProtectedRoute({ children, requiredRole }: { children: React.ReactElement; requiredRole?: 'teacher' | 'student' }) {
   const { user, loading, authError, logout, retryAuth } = useAuth()
@@ -50,8 +51,7 @@ export function PublicRoute({ children }: { children: React.ReactElement }) {
   }
 
   if (user) {
-    const destination = user.role === 'teacher' ? '/teacher' : '/student'
-    return <Navigate to={destination} replace />
+    return <Navigate to={authenticatedDestination(user.role)} replace />
   }
 
   return children

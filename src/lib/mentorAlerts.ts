@@ -3,7 +3,7 @@ import {
   type PerformanceSignal,
   type StudentStatusResult,
   type TaskSignal,
-} from './studentStatus.ts'
+} from './studentStatus'
 
 import type {
   GoalMetricProgress,

@@ -2,7 +2,7 @@ import React from 'react'
 
 export default function Card({ children, className = '' }: { children: React.ReactNode, className?: string }) {
   return (
-    <div className={`bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/50 p-8 ${className}`}>
+    <div className={`ui-card min-w-0 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-[0_2px_8px_rgb(15,23,42,0.03)] transition-shadow hover:shadow-[0_4px_14px_rgb(15,23,42,0.05)] ${className}`}>
       {children}
     </div>
   )

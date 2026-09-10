@@ -12,9 +12,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
-    "noEmit": true,
-    
-    "baseUrl": "./"
+    "noEmit": true
   },
   "include": ["src"],
   "references": []

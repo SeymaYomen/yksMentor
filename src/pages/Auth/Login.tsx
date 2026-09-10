@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
-import Card from '../../components/ui/Card'
 import { useAuth } from '../../hooks/useAuth'
 import { showSuccess, showError } from '../../components/ui/ToastButton'
+import { clearTeacherActivationIntent, setTeacherActivationIntent } from '../../lib/teacherActivationIntent'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -13,11 +13,12 @@ export default function Login() {
   const teacherInviteRequired = searchParams.get('teacherInvite') === 'required'
   const [activateTeacherAfterLogin, setActivateTeacherAfterLogin] = useState(teacherInviteRequired)
   const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
   const auth = useAuth()
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    if (activateTeacherAfterLogin) setTeacherActivationIntent()
+    else clearTeacherActivationIntent()
     setLoading(true)
     const result = await auth.login({ email, password })
     setLoading(false)
@@ -33,17 +34,11 @@ export default function Login() {
 
     showSuccess('Tekrar hoş geldiniz, ' + result.user.username + '!')
 
-    if (result.user.role === 'teacher') {
-      navigate('/teacher', { replace: true })
-      return
-    }
-
-    navigate(activateTeacherAfterLogin ? '/student/activate-teacher' : '/student', { replace: true })
+    // Authenticated yönlendirmesinin tek sahibi PublicRoute'tur.
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-indigo-50 to-purple-100 p-4">
-      <Card className="w-full max-w-md border-t-4 border-t-indigo-500">
+    <div>
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">Giriş Yap</h2>
           <p className="text-sm text-gray-500">YKS yolculuğunda kaldığın yerden devam et!</p>
@@ -82,7 +77,6 @@ export default function Login() {
             <Link to="/register" className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors">Yeni hesap oluştur</Link>
           </div>
         </form>
-      </Card>
     </div>
   )
 }

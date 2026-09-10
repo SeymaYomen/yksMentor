@@ -5,6 +5,7 @@ import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
 import Input from '../../components/ui/Input'
 import { showError, showSuccess } from '../../components/ui/ToastButton'
+import { clearTeacherActivationIntent } from '../../lib/teacherActivationIntent'
 
 export default function TeacherInviteActivation() {
   const [inviteCode, setInviteCode] = useState('')
@@ -28,6 +29,12 @@ export default function TeacherInviteActivation() {
       return
     }
 
+    if (result.user?.role !== 'teacher') {
+      showError('Öğretmen rolü doğrulanamadı. Lütfen tekrar deneyin.')
+      return
+    }
+
+    clearTeacherActivationIntent()
     showSuccess('Öğretmen hesabınız güvenli biçimde etkinleştirildi.')
     navigate('/teacher', { replace: true })
   }
@@ -58,7 +65,10 @@ export default function TeacherInviteActivation() {
             </Button>
             <button
               type="button"
-              onClick={() => navigate('/student', { replace: true })}
+              onClick={() => {
+                clearTeacherActivationIntent()
+                navigate('/student', { replace: true })
+              }}
               className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
             >
               Öğrenci Paneline Devam Et

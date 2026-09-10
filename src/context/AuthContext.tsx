@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { authMessage } from '../lib/authMessages'
 import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
@@ -52,6 +53,10 @@ function toError(error: unknown, fallback: string) {
     return new Error(String((error as { message: unknown }).message))
   }
   return new Error(fallback)
+}
+
+function toAuthError(error: unknown) {
+  return new Error(authMessage(error))
 }
 
 function isUserRole(role: unknown): role is UserRole {
@@ -145,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       if (version !== syncVersion.current) return
       setUser(null)
-      setAuthError(toError(error, 'Oturum profili okunamadı.').message)
+      setAuthError(authMessage(error))
     } finally {
       if (version === syncVersion.current) setLoading(false)
     }
@@ -174,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!active) return
       if (error) {
         setUser(null)
-        setAuthError(error.message)
+        setAuthError(authMessage(error))
         setLoading(false)
         return
       }
@@ -200,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabaseClient.auth.getSession()
     if (error) {
       setUser(null)
-      setAuthError(error.message)
+      setAuthError(authMessage(error))
       setLoading(false)
       return
     }
@@ -253,7 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       await supabaseClient.auth.signOut().catch(() => undefined)
       setUser(null)
-      return { error: toError(error, 'Kayıt tamamlanamadı.') }
+      return { error: toAuthError(error) }
     } finally {
       authMutationInProgress.current = false
     }
@@ -279,7 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       if (signedIn) await supabaseClient.auth.signOut().catch(() => undefined)
       setUser(null)
-      return { error: toError(error, 'Giriş yapılamadı.') }
+      return { error: toAuthError(error) }
     } finally {
       authMutationInProgress.current = false
     }
