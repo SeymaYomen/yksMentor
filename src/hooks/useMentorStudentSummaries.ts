@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { loadStudyPerformance } from '../lib/studySessionData'
 import { calculateGoalProgress, type GoalProgressResult, type StudentGoal } from '../lib/goalProgress'
 import { loadTopicPerformanceSignals, type StudentTopicPerformanceSignal } from '../lib/academicData'
 import { calculateCompetencyMap, type CompetencyMapResult } from '../lib/competencyMap'
@@ -60,10 +61,7 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
   if (studentIds.length === 0) return []
 
   const [performanceResult, taskResult, meetingResult, goalResult, actionItemResult, topicPerformance] = await Promise.all([
-    supabase
-      .from('performance')
-      .select('student_id, daily_hours, tyt_net, ayt_net, date, created_at')
-      .in('student_id', studentIds),
+    loadStudyPerformance(studentIds),
     supabase
       .from('tasks')
       .select('student_id, status, due_date')
@@ -87,13 +85,12 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
     }),
   ])
 
-  if (performanceResult.error) throw performanceResult.error
   if (taskResult.error) throw taskResult.error
   if (meetingResult.error) throw meetingResult.error
   if (goalResult.error) throw goalResult.error
   if (actionItemResult.error) throw actionItemResult.error
 
-  const performanceByStudent = groupByStudent((performanceResult.data ?? []) as PerformanceRow[])
+  const performanceByStudent = groupByStudent(performanceResult as PerformanceRow[])
   const tasksByStudent = groupByStudent((taskResult.data ?? []) as TaskRow[])
   const meetingsByStudent = groupByStudent((meetingResult.data ?? []) as MeetingRow[])
   const actionItemsByStudent = groupByStudent((actionItemResult.data ?? []) as MeetingActionItem[])

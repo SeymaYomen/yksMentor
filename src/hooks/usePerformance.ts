@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { loadStudyPerformance } from '../lib/studySessionData'
 
 type PerfRow = {
   id: string
@@ -33,12 +34,7 @@ export default function usePerformance(studentId: string) {
         return
       }
       try {
-        const { data: rows, error } = await supabase
-          .from('performance')
-          .select('id, student_id, daily_hours, tyt_net, ayt_net, date, created_at')
-          .eq('student_id', studentId)
-
-        if (error) throw error
+        const rows = await loadStudyPerformance([studentId])
 
         const mapped = (rows || [])
           .map((r: any) => ({

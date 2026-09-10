@@ -5,6 +5,7 @@ import { loadTopicPerformanceSignals, type StudentTopicPerformanceSignal } from 
 import { calculateCompetencyMap } from '../lib/competencyMap'
 import { calculateStudentStatus } from '../lib/studentStatus'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { loadStudyPerformance } from '../lib/studySessionData'
 import type { Meeting } from './useMeetings'
 import type { UserRole } from './useAuth'
 
@@ -80,10 +81,7 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
       // These filters reduce payload size only. Existing table RLS remains the
       // authorization boundary for both mentor and student reads.
       const [performanceResult, taskResult, actionItemResult, goalResult, topicPerformanceResult] = await Promise.all([
-        supabase
-          .from('performance')
-          .select('student_id, daily_hours, tyt_net, ayt_net, date, created_at')
-          .in('student_id', studentIds),
+        loadStudyPerformance(studentIds),
         supabase
           .from('tasks')
           .select('student_id, status, due_date, created_at')
@@ -104,12 +102,11 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
         }),
       ])
 
-      if (performanceResult.error) throw performanceResult.error
       if (taskResult.error) throw taskResult.error
       if (actionItemResult.error) throw actionItemResult.error
       if (goalResult.error) throw goalResult.error
 
-      setPerformance((performanceResult.data ?? []) as PerformanceRow[])
+      setPerformance(performanceResult)
       setTasks((taskResult.data ?? []) as TaskRow[])
       setActionItems((actionItemResult.data ?? []) as MeetingActionItem[])
       setGoals((goalResult.data ?? []) as StudentGoal[])

@@ -208,13 +208,13 @@ export default function StudentDashboard() {
             )}
           </Card>
 
-          {/* Hızlı Net/Çalışma Giriş Formu */}
+          {/* Günlük çalışma kayıtları */}
           <Card className="p-6">
             <div className="mb-4">
               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                ✍️ Günlük Çalışma & Net Bildirimi
+                Çalışma Kaydı
               </h3>
-              <p className="text-xs text-gray-400">Çalıştığın süreyi ve deneme netlerini gir, rehber öğretmenin anlık görsün.</p>
+              <p className="text-xs text-gray-400">Çalıştığın ders ve konuyu ekle; günlük süren otomatik hesaplansın.</p>
             </div>
             {studentId ? <PerformanceForm studentId={studentId} /> : <div className="text-sm text-gray-400">Giriş yapınız.</div>}
           </Card>
