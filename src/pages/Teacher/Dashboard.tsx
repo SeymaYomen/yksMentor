@@ -1,3 +1,5 @@
+import { UsersIcon } from '@heroicons/react/24/outline'
+import { Link } from 'react-router-dom'
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useMentorStudentSummaries } from '../../hooks/useMentorStudentSummaries'
@@ -36,10 +38,10 @@ export default function TeacherDashboard() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60">
+      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Öğretmen Paneli</h2>
-          <p className="text-gray-500 text-sm mt-1">Hoş geldiniz, {user?.username}. Tüm öğrencilerinizi buradan takip edebilirsiniz.</p>
+          <h1 className="text-2xl font-semibold text-gray-800">Öğretmen Paneli</h1>
+          <p className="text-gray-500 text-sm mt-1">Hoş geldiniz, {user?.username}. Önce dikkat gereken öğrencileri ve yaklaşan görüşmeleri inceleyin.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Katılım Kodu */}
@@ -92,7 +94,7 @@ export default function TeacherDashboard() {
             </div>
           )}
           <div className="flex items-center gap-3 bg-purple-50 px-4 py-2 rounded-xl border border-purple-100">
-            <span className="text-2xl">👨‍🏫</span>
+            <UsersIcon aria-hidden="true" className="h-6 w-6 text-violet-600" />
             <div>
               <div className="text-xs text-purple-600 font-semibold uppercase tracking-wider">Öğrenci Sayısı</div>
               <div className="text-xl font-bold text-purple-900">{students.length}</div>
@@ -109,9 +111,28 @@ export default function TeacherDashboard() {
         onRetry={() => void reload()}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-semibold text-slate-800">Yaklaşan görüşmeler</h3>
+          <Link to="/teacher/meetings" className="rounded-lg px-3 py-2 text-sm font-semibold text-indigo-700">Görüşmeleri Aç</Link>
+        </div>
+        {studentsLoading ? <p role="status" className="mt-2 text-sm text-slate-500">Görüşmeler yükleniyor…</p> : studentsError ?
+          <p className="mt-2 text-sm text-slate-500">Görüşme özeti yüklenemedi.</p> :
+          students.some(student => student.status.metrics.nextMeetingAt) ? (
+            <ul className="mt-3 divide-y divide-slate-100">
+              {students.filter(student => student.status.metrics.nextMeetingAt)
+                .sort((a, b) => new Date(a.status.metrics.nextMeetingAt!).getTime() - new Date(b.status.metrics.nextMeetingAt!).getTime())
+                .slice(0, 3).map(student => <li key={student.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                  <button type="button" onClick={() => setSelectedStudent(student.id)} className="font-semibold text-indigo-700">{student.username}</button>
+                  <time dateTime={student.status.metrics.nextMeetingAt!} className="tabular-nums text-slate-600">{new Date(student.status.metrics.nextMeetingAt!).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })}</time>
+                </li>)}
+            </ul>
+          ) : <p className="mt-2 text-sm text-slate-500">Henüz yaklaşan görüşme yok. Görüşmeler ekranından planlayabilirsiniz.</p>}
+      </Card>
+
+      <div className="grid min-w-0 grid-cols-1 xl:grid-cols-3 gap-5">
         {/* Sol Kolon: Öğrenci Listesi */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="min-w-0 xl:col-span-1 space-y-5">
           <StudentList 
             students={students} 
             selectedStudent={selectedStudent} 
@@ -120,28 +141,28 @@ export default function TeacherDashboard() {
             error={studentsError}
             onRetry={() => void reload()}
           />
-          <AssignTaskForm 
+          {students.length > 0 && <AssignTaskForm
             students={students} 
             selectedStudent={selectedStudent} 
-          />
+          />}
         </div>
 
         {/* Sağ Kolon: Öğrenci Detayları */}
-        <div className="lg:col-span-2">
+        <div className="min-w-0 xl:col-span-2">
           {selectedStudent ? (
             <div className="space-y-6">
               <Card className="border-t-4 border-t-indigo-500">
                 <div className="flex items-center gap-4 mb-6 pb-4 border-b">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-600 font-bold text-2xl shadow-inner">
+                  <div className="w-12 h-12 shrink-0 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-600 font-bold text-2xl shadow-inner">
                     {selectedStudentData?.username?.charAt(0).toUpperCase()}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="text-xl font-bold text-gray-800">{selectedStudentData?.username}</h3>
                     <div className="flex gap-2 mt-1">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                         Aktif Öğrenci
                       </span>
-                      <span className="text-xs text-gray-400 self-center">ID: {selectedStudent?.slice(0, 8)}</span>
+                      
                     </div>
                   </div>
                 </div>
@@ -156,10 +177,10 @@ export default function TeacherDashboard() {
                       alerts={selectedStudentData.alerts}
                     />
                     <div className="mb-8 rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <h4 className="font-semibold text-gray-700">Ana hedef</h4>
-                          <p className="text-xs text-gray-500">Hedef değiştiğinde önceki kayıt silinmeden arşivlenir.</p>
+                          <p className="text-xs text-gray-500">Öğrencinin eğitim ve performans hedefleri.</p>
                         </div>
                         <button type="button" onClick={() => setShowGoalForm(value => !value)} className="rounded-xl bg-indigo-100 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-200">
                           {showGoalForm ? 'Kapat' : selectedStudentData.goalProgress.hasGoal ? 'Hedefi değiştir' : 'Hedef belirle'}
@@ -208,19 +229,19 @@ export default function TeacherDashboard() {
                 </div>
               </Card>
             </div>
-          ) : (
-            <Card className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white/40 border-dashed border-2">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          ) : students.length > 0 && !studentsLoading && !studentsError ? (
+            <Card className="flex flex-col items-center justify-center text-center p-5 border-dashed">
+              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
               <h3 className="text-lg font-medium text-gray-700 mb-2">Öğrenci Seçilmedi</h3>
               <p className="text-gray-500 max-w-sm">
-                Öğrencinin detaylarını, net grafiklerini ve çalışma saatlerini görmek için sol taraftaki listeden bir öğrenci seçin.
+                Detayları görmek için öğrenci listesinden bir öğrenci seçin.
               </p>
             </Card>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

@@ -29,12 +29,12 @@ export default function Sidebar({ role }: { role: UserRole }) {
   ]
 
   const studentLinks = [
-    { to: '/student/exams', label: 'Denemelerim', icon: PresentationChartLineIcon },
     {
       to: '/student',
       label: 'Görevlerim & Çalışma',
       icon: ClipboardDocumentCheckIcon
     },
+    { to: '/student/exams', label: 'Denemelerim', icon: PresentationChartLineIcon },
     {
       to: '/student/meetings',
       label: 'Görüşmelerim',
@@ -46,10 +46,10 @@ export default function Sidebar({ role }: { role: UserRole }) {
 
   return (
     <>
-      <aside className="w-64 hidden md:block">
-        <div className="sticky top-6 bg-white/60 backdrop-blur-md rounded-2xl p-4 border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)] space-y-4">
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3">Hızlı Erişim</div>
-          <nav className="flex flex-col gap-1.5">
+      <aside className="hidden w-52 shrink-0 lg:block xl:w-60">
+        <div className="sticky top-6 bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-4">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3">Hızlı Erişim</div>
+          <nav aria-label="Ana menü" className="flex flex-col gap-1.5">
             {links.map((link) => {
               const Icon = link.icon
               const active = isActive(link.to)
@@ -57,13 +57,14 @@ export default function Sidebar({ role }: { role: UserRole }) {
                 <Link
                   key={link.to}
                   to={link.to}
+                  aria-current={active ? 'page' : undefined}
                   className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
                     active
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/10'
+                      ? 'bg-indigo-600 text-white shadow-sm'
                       : 'text-gray-600 hover:bg-gray-100/80 hover:text-gray-900'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                  <Icon aria-hidden="true" className={`w-5 h-5 shrink-0 ${active ? 'text-white' : 'text-slate-500'}`} />
                   {link.label}
                 </Link>
               )
@@ -73,7 +74,7 @@ export default function Sidebar({ role }: { role: UserRole }) {
       </aside>
 
       {/* Mobile quick nav */}
-      <nav className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-md rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.1)] border border-gray-100 px-5 py-2.5 flex gap-6 md:hidden z-50">
+      <nav aria-label="Alt menü" className="dashboard-bottom-nav fixed inset-x-0 bottom-0 z-40 flex justify-center border-t border-slate-200 bg-white/95 backdrop-blur-md lg:hidden">
         {links.map((link) => {
           const Icon = link.icon
           const active = isActive(link.to)
@@ -81,11 +82,12 @@ export default function Sidebar({ role }: { role: UserRole }) {
             <Link
               key={link.to}
               to={link.to}
-              className={`flex flex-col items-center gap-0.5 text-[10px] font-bold transition-all ${
-                active ? 'text-blue-600 scale-105' : 'text-gray-400 hover:text-gray-700'
+              aria-current={active ? 'page' : undefined}
+              className={`flex min-w-0 flex-1 max-w-40 flex-col justify-center items-center gap-1 px-2 text-xs font-semibold transition-colors ${
+                active ? 'text-indigo-700 bg-indigo-50' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Icon className="w-5.5 h-5.5" />
+              <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
               {link.label.split(' ')[0]}
             </Link>
           )

@@ -249,6 +249,7 @@ const reactDependency = { ...React, default: React }
 const badge = compile('../src/components/teacher/StudentStatusBadge.tsx', () => reactDependency)
 const summary = compile('../src/components/teacher/MentorSummary.tsx', id => {
   if (id === 'react') return reactDependency
+  if (id === '../../lib/format') return compile('../src/lib/format.ts')
   if (id === './StudentStatusBadge') return badge
   if (id === './AIMentorInsightPanel') return { default: () => null }
   if (id === '../../lib/competencyMap') return { selectCompetencyHighlights: () => ({ strong: [], developing: [], attention: [] }) }

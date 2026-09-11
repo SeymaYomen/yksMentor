@@ -11,11 +11,11 @@ export default function DashboardLayout() {
   if (!user) return <Navigate to="/login" replace />
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50/50 to-pink-50 text-gray-900">
+    <div className="dashboard-shell min-h-screen bg-slate-50 text-gray-900">
       <Navbar />
-      <div className="container container-max mx-auto px-4 pt-8 pb-28 md:pb-8 flex flex-col md:flex-row gap-6">
+      <div className="dashboard-content container-max mx-auto px-4 pt-5 lg:pt-6 flex flex-col lg:flex-row gap-6">
         <Sidebar role={user.role} />
-        <main className="min-w-0 flex-1 w-full">
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 w-full">
           <Outlet />
         </main>
       </div>

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useId, useRef, useState } from 'react'
 import { aiMentorInsightService } from '../../services/aiMentorService'
 import type { AIMentorInsightResponse } from '../../lib/aiMentorOutput'
 
@@ -12,6 +12,7 @@ export default function AIMentorInsightPanel({
   studentId: string
   currentFingerprint?: string | null
 }) {
+  const titleId = useId()
 
   const [results, setResults] = useState<Record<string, AIMentorInsightResponse>>({})
   const pending = useRef(new Set<string>())
@@ -31,7 +32,9 @@ export default function AIMentorInsightPanel({
       const response = await aiMentorInsightService.generateMentorInsight(studentId)
       setResults(current => ({ ...current, [studentId]: response }))
     } catch (caughtError) {
-      setErrors(current => ({ ...current, [studentId]: aiMentorErrorMessage(caughtError instanceof AIMentorServiceError ? caughtError.code : 'INTERNAL_ERROR') }))
+      const code = caughtError instanceof AIMentorServiceError ? caughtError.code : 'INTERNAL_ERROR'
+      setErrors(current => ({ ...current, [studentId]: code === 'RATE_LIMITED' || code === 'UNAUTHORIZED' || code === 'FORBIDDEN'
+        ? aiMentorErrorMessage(code) : 'AI Mentor şu anda kullanılamıyor.' }))
     } finally {
       pending.current.delete(studentId)
       setLoadingStudents(current => ({ ...current, [studentId]: false }))
@@ -39,17 +42,17 @@ export default function AIMentorInsightPanel({
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50/90 to-white p-4" aria-labelledby="ai-mentor-insight-title">
+    <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/50 p-4" aria-labelledby={titleId} aria-busy={loading}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h5 id="ai-mentor-insight-title" className="font-bold text-violet-900">AI Mentor Yorumu</h5>
-          <p className="mt-0.5 text-xs text-violet-700">Mevcut deterministik değerlendirmeleri açıklar; kararları veya öğrenci kayıtlarını değiştirmez.</p>
+          <h5 id={titleId} className="font-bold text-violet-900">AI Mentor Yorumu</h5>
+          <p className="mt-0.5 text-xs text-violet-700">Bu yorum öğrencinin hedef, performans, görev, konu yeterliliği ve aktif uyarı verilerine dayanır.</p>
         </div>
         <button
           type="button"
           disabled={loading}
           onClick={() => void generateInsight()}
-          className="shrink-0 rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-11 max-w-full rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? 'Mentor yorumu hazırlanıyor...' : result ? 'Yorumu Yenile' : 'Yorum Oluştur'}
         </button>
@@ -58,7 +61,7 @@ export default function AIMentorInsightPanel({
       {result && stale && (
         <p className="mt-3 text-sm text-amber-800" role="status">Yeni öğrenci verileri var. Bu yorum önceki verilere göre oluşturuldu.</p>
       )}
-      {result && currentFingerprint && !stale && <p className="mt-3 text-xs text-emerald-700">Güncel</p>}
+      {result && currentFingerprint && !stale && <p role="status" className="mt-3 text-xs text-emerald-700">Güncel</p>}
       {error && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
           {error}
@@ -95,7 +98,7 @@ export default function AIMentorInsightPanel({
             <p className="mt-1.5 text-sm leading-6 text-gray-700">{result.insight.studentFeedback}</p>
           </div>
 
-          <p className="text-[11px] text-gray-400">
+          <p className="text-xs text-gray-500">
             {new Date(result.generatedAt).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })} tarihinde oluşturuldu.
           </p>
         </div>

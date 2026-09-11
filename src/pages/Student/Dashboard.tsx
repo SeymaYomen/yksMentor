@@ -1,3 +1,4 @@
+import { CalendarDaysIcon, ClockIcon, UserCircleIcon, ArrowTopRightOnSquareIcon, ChartBarIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
 import React, { useEffect, useState } from 'react'
 import Card from '../../components/ui/Card'
 import TaskList from '../../components/student/TaskList'
@@ -53,35 +54,29 @@ export default function StudentDashboard() {
   }, [meetings])
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+    <div className="space-y-5">
       {/* 1. Üst Karşılama Kahramanı */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-6 md:p-8 text-white shadow-xl">
-        <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-15 hidden md:block">
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" fill="currentColor">
-            <polygon points="0,100 100,0 100,100" />
-          </svg>
-        </div>
-        
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="relative overflow-hidden bg-indigo-700 rounded-2xl p-5 sm:p-6 text-white">
+        <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
           <div className="space-y-2">
             <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-              🚀 YKS Hedefine Hazırlanıyor
+              <ClipboardDocumentCheckIcon aria-hidden="true" className="h-4 w-4" /> Bugünün planı
             </span>
-            <h2 className="text-3xl font-black tracking-tight">
-              Selam, {user?.username || 'Geleceğin Üniversitelisi'} 👋
-            </h2>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Selam, {user?.username || 'Öğrenci'}
+            </h1>
             <p className="text-blue-100/90 text-sm max-w-xl">
-              "Başarı, her gün tekrarlanan küçük çabaların toplamıdır." Bugün hedeflerini tamamlamaya ve hayaline bir adım daha yaklaşmaya hazır mısın?
+              {nextMeeting ? `Sıradaki görüşmen: ${nextMeeting.title}. Açık görevlerini aşağıdan takip edebilirsin.` : 'Açık görevlerini aşağıdan takip et; tamamladığın çalışmaları gününe ekle.'}
             </p>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-3 shrink-0 items-end md:items-center">
+          <div className="flex min-w-0 max-w-full flex-col md:flex-row gap-3 items-start md:items-center">
             {mentorName ? (
               <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-lg">👨‍🏫</div>
-                <div>
+                <div className="w-10 h-10 shrink-0 rounded-xl bg-white/20 flex items-center justify-center text-lg"><UserCircleIcon aria-hidden="true" className="h-6 w-6" /></div>
+                <div className="min-w-0">
                   <div className="text-[10px] text-blue-200/90 font-bold uppercase tracking-wider">Rehber Mentorun</div>
-                  <div className="font-bold text-sm">{mentorName}</div>
+                  <div className="break-words font-bold text-sm">{mentorName}</div>
                 </div>
               </div>
             ) : (
@@ -122,7 +117,7 @@ export default function StudentDashboard() {
       {foundTeacher && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full animate-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Öğretmen Bulundu 🎉</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Öğretmen Bulundu</h3>
             <p className="text-gray-600 text-sm mb-4">
               <span className="font-semibold text-indigo-600">{foundTeacher.username}</span> adlı öğretmenin sınıfına katılmak üzeresiniz. Bu işlemi onaylıyor musunuz?
             </p>
@@ -156,30 +151,25 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* 2. Grid Yapısı */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* SOL BLOK: Sıradaki Görüşme & İstatistikler */}
-        <div className="lg:col-span-8 space-y-6">
-          
-          {/* Sıradaki Görüşme Kartı */}
+      <div className="grid min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-2">
+        <Card><TaskList studentId={studentId} /></Card>
           <Card className="border-t-4 border-t-indigo-500 overflow-hidden relative">
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 "></span>
               Sıradaki Mentor Görüşmen
             </h3>
 
             {nextMeeting ? (
-              <div className="bg-gradient-to-br from-indigo-50/50 to-purple-50/30 border border-indigo-100/60 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="bg-gradient-to-br from-indigo-50/50 to-purple-50/30 border border-indigo-100/60 rounded-2xl p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                 <div className="space-y-3">
                   <div className="font-bold text-indigo-900 text-lg">{nextMeeting.title}</div>
                   
                   <div className="flex flex-wrap gap-3">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-indigo-100 rounded-xl text-xs font-semibold text-indigo-700 shadow-sm">
-                      📅 {nextMeeting.scheduled_at ? new Date(nextMeeting.scheduled_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) : ''}
+                      <CalendarDaysIcon aria-hidden="true" className="inline h-4 w-4 shrink-0" /> {nextMeeting.scheduled_at ? new Date(nextMeeting.scheduled_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) : ''}
                     </span>
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-indigo-100 rounded-xl text-xs font-semibold text-indigo-700 shadow-sm">
-                      ⏰ {nextMeeting.scheduled_at ? new Date(nextMeeting.scheduled_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                      <ClockIcon aria-hidden="true" className="h-4 w-4 shrink-0" /> {nextMeeting.scheduled_at ? new Date(nextMeeting.scheduled_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : ''}
                     </span>
                   </div>
 
@@ -193,65 +183,42 @@ export default function StudentDashboard() {
                     href={nextMeeting.meeting_url.startsWith('http') ? nextMeeting.meeting_url : `https://${nextMeeting.meeting_url}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl text-sm font-bold shadow-md hover:opacity-90 active:scale-95 transition-all"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-md hover:opacity-90 active:scale-95 transition-all"
                   >
-                    🚀 Toplantıya Katıl
+                    <ArrowTopRightOnSquareIcon aria-hidden="true" className="h-4 w-4" /> Toplantıya Katıl
                   </a>
                 ) : (
-                  <span className="px-4 py-2 bg-gray-100 text-gray-400 rounded-xl text-xs font-medium self-start md:self-auto">Görüşme linki henüz eklenmemiş</span>
+                  <span className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-medium self-start md:self-auto">Görüşme linki henüz eklenmemiş</span>
                 )}
               </div>
             ) : (
-              <div className="bg-gray-50 rounded-2xl p-6 text-center border border-dashed border-gray-200">
-                <p className="text-gray-500 font-medium text-sm">📅 Planlanmış yaklaşan bir görüşmeniz bulunmuyor.</p>
-                <p className="text-gray-400 text-xs mt-1">Öğretmeniniz görüşme planladığında burada görünecektir.</p>
+              <div className="bg-gray-50 rounded-2xl p-4 border border-dashed border-gray-200">
+                <p className="text-gray-500 font-medium text-sm"><CalendarDaysIcon aria-hidden="true" className="inline h-4 w-4 shrink-0" /> Planlanmış yaklaşan bir görüşmeniz bulunmuyor.</p>
+                <p className="text-gray-500 text-xs mt-1">Öğretmeniniz görüşme planladığında burada görünecektir.</p>
               </div>
             )}
           </Card>
-
+        <MockExamSummary studentId={studentId} />
+        <GoalProgressCard studentId={studentId} progress={goalProgress} loading={goalLoading} error={goalError} />
           {/* Günlük çalışma kayıtları */}
           <Card className="p-6">
             <div className="mb-4">
               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                 Çalışma Kaydı
               </h3>
-              <p className="text-xs text-gray-400">Çalıştığın ders ve konuyu ekle; günlük süren otomatik hesaplansın.</p>
+              <p className="text-xs text-gray-500">Çalıştığın ders ve konuyu ekle; günlük süren otomatik hesaplansın.</p>
             </div>
             {studentId ? <PerformanceForm studentId={studentId} /> : <div className="text-sm text-gray-400">Giriş yapınız.</div>}
-          </Card>
-
-          <MockExamSummary studentId={studentId} />
-          {/* Gelişim Grafiği */}
+          </Card>          {/* Gelişim Grafiği */}
           <Card className="p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              📈 Çalışma Saati Trendi
+              <ChartBarIcon aria-hidden="true" className="h-5 w-5" /> Çalışma Saati Trendi
             </h3>
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <StudentPerformanceChart studentId={studentId} />
             </div>
           </Card>
-
-          <TopicCompetencyMap studentId={studentId} />
-
-        </div>
-
-        {/* SAĞ BLOK: Görev Listesi & Hedefler */}
-        <div className="lg:col-span-4 space-y-6">
-          
-          <GoalProgressCard
-            studentId={studentId}
-            progress={goalProgress}
-            loading={goalLoading}
-            error={goalError}
-          />
-
-          {/* Görev Listesi Kartı */}
-          <Card className="p-6">
-            <TaskList studentId={studentId} />
-          </Card>
-
-        </div>
-
+        <div className="min-w-0 xl:col-span-2"><TopicCompetencyMap studentId={studentId} /></div>
       </div>
     </div>
   )

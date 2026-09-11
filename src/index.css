@@ -14,11 +14,22 @@
  input[type=checkbox], input[type=radio] { accent-color: #4F46E5; }
 }
 @layer components {
+ .dashboard-shell { --bottom-nav-height: 4.5rem; background-color: #fafaf8; }
+ .dashboard-content { padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 1.5rem); }
+ .dashboard-bottom-nav { height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); }
+ .dashboard-shell :is(section, article, fieldset, label) { min-width: 0; }
+ .dashboard-shell :is(button, a, li) { overflow-wrap: anywhere; }
+ .dashboard-shell input { max-width: 100%; min-width: 0; }
+ .dashboard-shell :is(button, a, input, select, textarea, summary) { scroll-margin-block: 1rem calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 1rem); }
+ .dashboard-shell :is(button, a):active { transition-duration: 100ms; }
  .container-max { max-width: 1440px; }
  .eyebrow { @apply text-xs font-semibold uppercase tracking-widest text-indigo-600; }
  .page-heading { @apply text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900; }
  .meeting-row { @apply grid min-w-0 grid-cols-[4rem_minmax(0,1fr)] gap-4 border-b border-slate-100 py-5 last:border-0; }
  .goal-success { animation: goal-arrive 400ms ease-out; }
+}
+@media (min-width: 1024px) {
+ .dashboard-content { padding-bottom: 2rem; }
 }
 @keyframes goal-arrive { from { opacity: .5; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) {

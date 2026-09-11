@@ -1,3 +1,4 @@
+import { formatDate, formatNumber } from '../../lib/format'
 import React, { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useAuth } from '../../hooks/useAuth'
@@ -8,8 +9,8 @@ import { localStudyDate } from '../../lib/studySessions'
 
 const empty = (): MockExamInput => ({ exam_type: 'TYT', exam_date: localStudyDate(), name: null, difficulty: null,
   branch_subject_id: null, subject_results: [], topic_errors: [] })
-const field = 'block w-full rounded-lg border border-gray-300 p-2 mt-1'
-const button = 'rounded-lg bg-indigo-600 text-white px-4 py-2 disabled:opacity-50'
+const field = 'block min-w-0 w-full rounded-lg border border-gray-300 p-2 mt-1'
+const button = 'min-h-11 rounded-xl bg-indigo-600 text-white px-4 py-2 font-semibold transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50'
 const message = (error: unknown) => error instanceof Error ? error.message : 'İşlem tamamlanamadı. Lütfen tekrar deneyin.'
 
 export default function MockExams() {
@@ -30,7 +31,7 @@ export default function MockExams() {
     if (!user?.id) return () => { active = false }
     Promise.all([loadAcademicCatalog(true), loadMockExams([user.id])]).then(([c, e]) => {
       if (active) { setCatalog(c); setExams(e) }
-    }).catch(e => { if (active) setError(message(e)) }).finally(() => { if (active) setLoading(false) })
+    }).catch(() => { if (active) setError('Denemeler yüklenemedi. Lütfen tekrar deneyin.') }).finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [user?.id, retry])
   const name = (id: string) => catalog.subjects.find(s => s.id === id)?.name ?? 'Ders'
@@ -55,7 +56,7 @@ export default function MockExams() {
       setStep(0); setEditing(null); setInput(empty()); setNotice('Deneme kaydedildi.')
       window.dispatchEvent(new Event('performance_updated'))
       setExams(await loadMockExams([user!.id]))
-    } catch (e) { setError(message(e)) } finally { setBusy(false) }
+    } catch { setError('Deneme kaydedilemedi. Bilgilerini kontrol edip tekrar dene.') } finally { setBusy(false) }
   }
   async function remove(exam: MockExam) {
     if (!window.confirm('Bu denemeyi silmek istiyor musun?')) return
@@ -64,18 +65,18 @@ export default function MockExams() {
       await deleteMockExam(exam.id)
       setExams(rows => rows.filter(r => r.id !== exam.id))
       window.dispatchEvent(new Event('performance_updated'))
-    } catch (e) { setError(message(e)) } finally { setBusy(false) }
+    } catch { setError('Deneme silinemedi. Lütfen tekrar deneyin.') } finally { setBusy(false) }
   }
   return <div className="space-y-6 pb-8">
     <header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">Denemelerim</h1>
       <p className="text-gray-500">Sonuçlarını kaydet, net gelişimini takip et.</p></div>
-      {!step && <button className={button} disabled={loading || busy || !catalog.subjects.length} onClick={() => { setInput(empty()); setEditing(null); setStep(1); setError(''); setNotice('') }}>Deneme ekle</button>}</header>
-    {error && <div role="alert" className="text-red-700">{error} <button className="underline" onClick={() => setRetry(v => v + 1)}>Yeniden yükle</button></div>}
+      {!step && <button type="button" className={button} disabled={loading || busy || !catalog.subjects.length} onClick={() => { setInput(empty()); setEditing(null); setStep(1); setError(''); setNotice('') }}>Deneme ekle</button>}</header>
+    {error && <div role="alert" className="text-red-700">{error} <button type="button" className="underline" onClick={() => setRetry(v => v + 1)}>Yeniden yükle</button></div>}
     {notice && <p role="status" className="text-green-700">{notice}</p>}
     {loading ? <p role="status">Yükleniyor...</p> : <>
-      {step > 0 && <form className="rounded-2xl border bg-white p-5 space-y-5" onSubmit={e => { e.preventDefault(); if (step < 3) next(); else void save() }}>
+      {step > 0 && <form className="mx-auto max-w-3xl rounded-2xl border bg-white p-4 sm:p-5 space-y-5" onSubmit={e => { e.preventDefault(); if (step < 3) next(); else void save() }}>
         <h2 className="font-bold">Adım {step} / 3 — {step === 1 ? 'Deneme bilgileri' : step === 2 ? 'Ders sonuçları' : 'Hatalarını incele (opsiyonel)'}</h2>
-        <fieldset disabled={busy} className="space-y-4">
+        <fieldset disabled={busy} className="min-w-0 space-y-4">
           {step === 1 && <div className="grid sm:grid-cols-2 gap-4">
             <label>Sınav türü<select className={field} value={input.exam_type} onChange={e => setInput({ ...input, exam_type: e.target.value as MockExamType, branch_subject_id: null, subject_results: [], topic_errors: [] })}>
               <option>TYT</option><option>AYT</option><option value="BRANCH">Branş</option></select></label>
@@ -88,13 +89,13 @@ export default function MockExams() {
           </div>}
           {step === 2 && <><p className="text-sm text-gray-500">Sonucu olmayan dersi çıkar. Sıfır girilen ders 0 net olarak kaydedilir.</p>
             {input.subject_results.map((r, i) => <div key={r.subject_id} className="rounded-xl border p-3 space-y-2"><h3 className="font-semibold">{name(r.subject_id)}</h3>
-              <div className="grid grid-cols-3 gap-2">{(['correct_count', 'wrong_count', 'blank_count'] as const).map((key, k) => <label key={key}>{['Doğru', 'Yanlış', 'Boş'][k]}
+              <div className="grid min-w-0 grid-cols-3 gap-2">{(['correct_count', 'wrong_count', 'blank_count'] as const).map((key, k) => <label key={key}>{['Doğru', 'Yanlış', 'Boş'][k]}
                 <input required className={field} type="number" min={0} max={2147483647} step={1} value={Number.isNaN(r[key]) ? '' : r[key]} onChange={e => setInput({ ...input, subject_results: input.subject_results.map((row, index) => index === i ? { ...row, [key]: e.target.valueAsNumber } : row) })} /></label>)}</div>
-              <p>Net: {Number.isFinite(examNet(r.correct_count, r.wrong_count)) ? examNet(r.correct_count, r.wrong_count) : '—'}</p>
+              <p>Net: {Number.isFinite(examNet(r.correct_count, r.wrong_count)) ? formatNumber(examNet(r.correct_count, r.wrong_count)) : '—'}</p>
               {input.exam_type !== 'BRANCH' && <button type="button" className="text-sm text-red-700" onClick={() => setInput({ ...input, subject_results: input.subject_results.filter(row => row.subject_id !== r.subject_id), topic_errors: input.topic_errors.filter(t => t.subject_id !== r.subject_id) })}>Dersi çıkar</button>}
             </div>)}
             {available.filter(s => !input.subject_results.some(r => r.subject_id === s.id)).map(s => <button key={s.id} type="button" className="mr-3 text-indigo-700" onClick={() => setInput({ ...input, subject_results: [...input.subject_results, { subject_id: s.id, correct_count: 0, wrong_count: 0, blank_count: 0 }] })}>{s.name} ekle</button>)}
-            <p className="font-bold">Toplam net: {examTotal(input.subject_results) ?? '—'}</p></>}
+            <p className="font-bold">Toplam net: {formatNumber(examTotal(input.subject_results))}</p></>}
           {step === 3 && <><p className="text-sm text-gray-500">Yalnız yanlış ve boş sorularını etiketle. Konu etiketlemek zorunlu değil.</p>
             {input.subject_results.filter(r => r.wrong_count + r.blank_count > 0).map(r => <div key={r.subject_id} className="border rounded-xl p-3 space-y-3"><h3 className="font-semibold">{name(r.subject_id)} — {r.wrong_count} yanlış, {r.blank_count} boş</h3>
               {input.topic_errors.filter(t => t.subject_id === r.subject_id).map(t => <div key={t.topic_id} className="space-y-2"><p>{catalog.topics.find(c => c.id === t.topic_id)?.name}</p><div className="grid grid-cols-2 gap-2">
@@ -102,25 +103,25 @@ export default function MockExams() {
                 <button type="button" className="text-red-700 text-sm" onClick={() => setInput({ ...input, topic_errors: input.topic_errors.filter(row => row.topic_id !== t.topic_id) })}>Etiketi kaldır</button></div>)}
               <label>Konu ekle<select className={field} value="" onChange={e => { if (e.target.value) setInput({ ...input, topic_errors: [...input.topic_errors, { subject_id: r.subject_id, topic_id: e.target.value, wrong_count: 0, blank_count: 0 }] }) }}>
                 <option value="">Konu seç</option>{catalog.topics.filter(t => t.is_active && t.subject_id === r.subject_id && !input.topic_errors.some(row => row.topic_id === t.id)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
-            </div>)}<p className="font-bold">Toplam net: {examTotal(input.subject_results)}</p></>}
+            </div>)}<p className="font-bold">Toplam net: {formatNumber(examTotal(input.subject_results))}</p></>}
           <div className="flex flex-wrap gap-3"><button type="button" className="px-3 py-2" onClick={() => { setStep(0); setError('') }}>İptal</button>
             {step > 1 && <button type="button" className="px-3 py-2" onClick={() => { setStep(step - 1); setError('') }}>Geri</button>}
-            <button className={button} type="submit">{busy ? 'Kaydediliyor...' : step < 3 ? 'Devam' : 'Kaydet'}</button></div>
+            <button className={button} type="submit" aria-busy={busy}>{busy ? 'Kaydediliyor...' : step < 3 ? 'Devam' : 'Kaydet'}</button></div>
         </fieldset>
       </form>}
       <div className="grid lg:grid-cols-2 gap-4">{(['TYT', 'AYT'] as const).map(type => {
         const points = [...exams].reverse().filter(e => e.exam_type === type).map(e => ({ date: e.exam_date, net: examTotal(e.subject_results) }))
         return <section key={type} className="rounded-2xl bg-white border p-4"><h2 className="font-bold mb-3">{type} Net Trendi</h2>
           {points.length < 2 ? <p className="text-sm text-gray-500">{points.length ? 'İkinci denemeden sonra trend burada görünecek.' : `Henüz ${type} denemesi yok.`}</p> :
-            <div className="h-56" role="img" aria-label={`${type} netleri: ${points.map(p => `${p.date}: ${p.net}`).join(', ')}`}><ResponsiveContainer width="100%" height="100%"><LineChart data={points}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis /><Tooltip /><Line dataKey="net" name="Net" stroke="#4f46e5" strokeWidth={2} /></LineChart></ResponsiveContainer></div>}</section>
+            <div className="h-56" role="img" aria-label={`${type} netleri: ${points.map(p => `${formatDate(p.date, { dateStyle: 'medium' })}: ${formatNumber(p.net)}`).join(', ')}`}><ResponsiveContainer width="100%" height="100%"><LineChart data={points}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" tickFormatter={value => formatDate(value, { day: 'numeric', month: 'short' })} /><YAxis tickFormatter={value => formatNumber(Number(value), 0)} /><Tooltip formatter={value => formatNumber(Number(value))} labelFormatter={value => formatDate(String(value), { dateStyle: 'medium' })} /><Line dataKey="net" name="Net" stroke="#4f46e5" strokeWidth={2} isAnimationActive={false} /></LineChart></ResponsiveContainer></div>}</section>
       })}</div>
-      <section className="space-y-3"><h2 className="text-xl font-bold">Geçmiş denemeler</h2>{!exams.length && <p>Henüz deneme kaydı yok.</p>}
+      <section className="space-y-3"><h2 className="text-xl font-bold">Geçmiş denemeler</h2>{!exams.length && <p>Henüz deneme yok. Deneme ekleyerek ilerleme trendini görebilirsin.</p>}
         {exams.map(exam => { const delta = previousExamDelta(exam, exams); return <article key={exam.id} className="rounded-2xl bg-white border p-5 space-y-3">
-          <div className="flex flex-wrap justify-between gap-2"><div><h3 className="font-bold">{exam.exam_type === 'BRANCH' ? `Branş · ${name(exam.branch_subject_id!)}` : exam.exam_type} · {exam.name || 'İsimsiz deneme'}</h3><time dateTime={exam.exam_date}>{exam.exam_date}</time></div><strong>{examTotal(exam.subject_results) ?? '—'} net</strong></div>
-          <p className="text-sm text-gray-500">{delta === null ? 'Önceki aynı tür deneme yok.' : `Önceki aynı tür denemeye göre ${delta > 0 ? '+' : ''}${delta} net`}</p>
-          <ul className="text-sm space-y-1">{exam.subject_results.map(r => <li key={r.subject_id}>{name(r.subject_id)}: {r.correct_count} D / {r.wrong_count} Y / {r.blank_count} B · {examNet(r.correct_count, r.wrong_count)} net</li>)}</ul>
-          <div className="flex gap-4"><button disabled={busy || step > 0} className="text-indigo-700 disabled:opacity-50" onClick={() => { setInput({ ...exam, subject_results: exam.subject_results.map(r => ({ ...r })), topic_errors: exam.topic_errors.map(t => ({ ...t })) }); setEditing(exam.id); setStep(1); setError(''); setNotice(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Düzenle</button>
-            <button disabled={busy || step > 0} className="text-red-700 disabled:opacity-50" onClick={() => void remove(exam)}>Sil</button></div>
+          <div className="flex flex-wrap justify-between gap-2"><div className="min-w-0"><h3 className="font-bold">{exam.exam_type === 'BRANCH' ? `Branş · ${name(exam.branch_subject_id!)}` : exam.exam_type} · {exam.name || 'İsimsiz deneme'}</h3><time dateTime={exam.exam_date}>{formatDate(exam.exam_date, { dateStyle: 'medium' })}</time></div><strong className="tabular-nums">{formatNumber(examTotal(exam.subject_results))} net</strong></div>
+          <p className="text-sm text-gray-500">{delta === null ? 'Önceki aynı tür deneme yok.' : `Önceki aynı tür denemeye göre ${delta > 0 ? '+' : ''}${formatNumber(delta)} net`}</p>
+          <ul className="text-sm space-y-1">{exam.subject_results.map(r => <li key={r.subject_id}>{name(r.subject_id)}: {r.correct_count} D / {r.wrong_count} Y / {r.blank_count} B · {formatNumber(examNet(r.correct_count, r.wrong_count))} net</li>)}</ul>
+          <div className="flex gap-4"><button type="button" disabled={busy || step > 0} className="text-indigo-700 disabled:opacity-50" onClick={() => { setInput({ ...exam, subject_results: exam.subject_results.map(r => ({ ...r })), topic_errors: exam.topic_errors.map(t => ({ ...t })) }); setEditing(exam.id); setStep(1); setError(''); setNotice(''); window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }) }}>Düzenle</button>
+            <button type="button" disabled={busy || step > 0} className="text-red-700 disabled:opacity-50" onClick={() => void remove(exam)}>Sil</button></div>
         </article> })}
       </section>
     </>}

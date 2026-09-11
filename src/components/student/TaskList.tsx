@@ -1,3 +1,4 @@
+import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
 import React from 'react'
 import { useTasks, Task } from '../../hooks/useTasks'
 import { useAuth } from '../../hooks/useAuth'
@@ -14,15 +15,15 @@ export default function TaskList({ studentId, isTeacherView = false }: { student
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between border-b pb-2">
-        <h3 className="text-lg font-bold text-gray-800">{isTeacherView ? 'Öğrencinin Görevleri' : 'Görevlerim'}</h3>
-        <span className="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-          {tasks.length} Görev
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+        <h3 className="text-lg font-bold text-gray-800">{isTeacherView ? 'Öğrencinin Görevleri' : 'Bugün ne yapmalıyım?'}</h3>
+        {!loading && !error && <span className="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+          {pendingTasks.length} açık
+        </span>}
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-8">
+        <div role="status" aria-label="Görevler yükleniyor" className="flex justify-center py-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
         </div>
       ) : error ? (
@@ -31,13 +32,14 @@ export default function TaskList({ studentId, isTeacherView = false }: { student
           <button type="button" onClick={() => void fetchTasks()} className="mt-2 rounded-lg bg-white px-3 py-2 font-semibold">Tekrar dene</button>
         </div>
       ) : tasks.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-          <div className="text-4xl mb-2">🎉</div>
-          <div className="text-gray-500 font-medium">Harika! Tüm görevleri tamamladın.</div>
-          <div className="text-sm text-gray-400">Şu an için atanan yeni bir görev yok.</div>
+        <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+          <ClipboardDocumentCheckIcon aria-hidden="true" className="mb-2 h-6 w-6 text-slate-500" />
+          <div className="text-gray-500 font-medium">Henüz görev yok.</div>
+          <div className="text-sm text-gray-500">Atanan görevler burada görünecek.</div>
         </div>
       ) : (
         <div className="space-y-6">
+          {pendingTasks.length === 0 && <p className="text-sm font-medium text-emerald-700">Açık görevin yok. Tamamladığın görevleri aşağıdan inceleyebilirsin.</p>}
           {/* Bekleyen Görevler */}
           {pendingTasks.length > 0 && (
             <div className="space-y-3">
@@ -55,17 +57,17 @@ export default function TaskList({ studentId, isTeacherView = false }: { student
 
           {/* Tamamlanan Görevler */}
           {completedTasks.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            <details className="space-y-3">
+              <summary className="cursor-pointer py-2 text-sm font-semibold text-gray-500">
+                <span className="mr-2 inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
                 Tamamlananlar ({completedTasks.length})
-              </h4>
+              </summary>
               <ul className="space-y-2 opacity-70">
                 {completedTasks.map((t: Task) => (
                   <TaskItem key={t.id} task={t} toggle={toggleTaskStatus} readOnly={isTeacherView} />
                 ))}
               </ul>
-            </div>
+            </details>
           )}
         </div>
       )}
@@ -75,15 +77,20 @@ export default function TaskList({ studentId, isTeacherView = false }: { student
 
 function TaskItem({ task, toggle, readOnly = false }: { task: Task; toggle: (id: string, status: boolean) => Promise<void>, readOnly?: boolean }) {
   const isCompleted = !!task.status
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const due = task.due_date ? new Date(`${task.due_date.slice(0, 10)}T00:00:00`) : null
+  const dueToday = due?.getTime() === today.getTime()
 
   return (
     <li className={`flex items-start gap-4 p-4 rounded-xl border transition-all ${
       isCompleted ? 'bg-gray-50 border-gray-200' : 'bg-white border-indigo-100 shadow-sm hover:shadow-md'
     }`}>
       <div className="flex-shrink-0 pt-0.5">
-        <label className={`relative flex items-center rounded-full p-1 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`} htmlFor={`checkbox-${task.id}`}>
+        <label className={`relative flex min-h-11 min-w-11 items-center justify-center rounded-full p-1 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`} htmlFor={`checkbox-${task.id}`}>
           <input
             type="checkbox"
+            aria-label={task.title}
             className={`peer relative h-6 w-6 appearance-none rounded-md border border-gray-300 transition-all checked:border-green-500 checked:bg-green-500 hover:scale-105 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
             id={`checkbox-${task.id}`}
             checked={isCompleted}
@@ -104,7 +111,7 @@ function TaskItem({ task, toggle, readOnly = false }: { task: Task; toggle: (id:
         <div className={`font-semibold text-base ${isCompleted ? 'text-gray-500 line-through' : 'text-gray-800'}`}>
           {task.title}
         </div>
-        <div className="flex items-center gap-4 mt-1">
+        <div className="flex flex-wrap items-center gap-2 mt-1">
           {(task.exam_type || task.subject || task.topic) && (
             <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700">
               {[task.exam_type, task.subject?.name, task.topic?.name].filter(Boolean).join(' / ')}
@@ -112,13 +119,13 @@ function TaskItem({ task, toggle, readOnly = false }: { task: Task; toggle: (id:
           )}
           {task.due_date && (
             <div className={`text-xs flex items-center gap-1 ${
-              isCompleted ? 'text-gray-400' :
-              new Date(task.due_date) < new Date() ? 'text-red-500 font-medium' : 'text-indigo-500'
+              isCompleted ? 'text-gray-500' :
+              due && due < today ? 'text-red-700 font-medium' : 'text-indigo-700'
             }`}>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              {new Date(task.due_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
+              {dueToday && !isCompleted ? 'Bugün' : new Date(task.due_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
             </div>
           )}
         </div>

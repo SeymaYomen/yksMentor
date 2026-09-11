@@ -5,13 +5,22 @@ import { selectCompetencyHighlights, type CompetencyMapResult, type TopicCompete
 import type { MentorAlertResult } from '../../lib/mentorAlerts'
 import StudentStatusBadge from './StudentStatusBadge'
 import AIMentorInsightPanel from './AIMentorInsightPanel'
+import { formatNumber as formatValue } from '../../lib/format'
 import {
   buildAIMentorContext,
   createAIMentorContextFingerprint,
 } from '../../lib/aiMentorContext'
 function formatNumber(value: number | null, suffix = '') {
   if (value === null) return 'Henüz yeterli veri yok'
-  return `${new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(value)}${suffix}`
+  if (suffix === ' saat') {
+    const minutes = Math.round(value * 60)
+    return `${Math.floor(minutes / 60)} sa ${minutes % 60} dk`
+  }
+  return `${formatValue(value)}${suffix}`
+}
+
+function formatNet(value: number) {
+  return formatValue(value)
 }
 
 function trendArrow(trend: TrendDirection) {
@@ -23,14 +32,14 @@ function trendArrow(trend: TrendDirection) {
 
 function comparisonText(comparison: MetricComparison, suffix = '') {
   if (comparison.previous === null || comparison.current === null) {
-    return <span className="text-gray-400">Henüz yeterli veri yok</span>
+    return <span className="text-gray-500">Henüz yeterli veri yok</span>
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5">
-      {formatNumber(comparison.previous, suffix)}
-      <span className="text-gray-400">→</span>
-      {formatNumber(comparison.current, suffix)}
+    <span className="inline-flex flex-wrap items-center justify-end gap-1.5">
+      {suffix ? formatNumber(comparison.previous, suffix) : formatNet(comparison.previous)}
+      <span className="text-gray-500">→</span>
+      {suffix ? formatNumber(comparison.current, suffix) : formatNet(comparison.current)}
       {trendArrow(comparison.trend)}
     </span>
   )
@@ -38,7 +47,7 @@ function comparisonText(comparison: MetricComparison, suffix = '') {
 
 function SummaryRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-gray-100 py-2.5 last:border-0">
+    <div className="flex flex-wrap items-start justify-between gap-2 border-b border-gray-100 py-2.5 last:border-0">
       <dt className="text-sm text-gray-500">{label}</dt>
       <dd className="text-right text-sm font-semibold text-gray-700">{children}</dd>
     </div>
@@ -49,10 +58,10 @@ function GoalMetricRow({ label, metric }: { label: string; metric: GoalMetricPro
   if (metric.target === null) return null
   return (
     <div className="rounded-xl border border-indigo-100 bg-white/80 p-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-sm font-bold text-gray-700">{label}</span>
         <span className="text-sm font-semibold text-indigo-700">
-          {metric.current === null ? 'Performans verisi yok' : `${formatNumber(metric.current)} / ${formatNumber(metric.target)}`}
+          {metric.current === null ? `Henüz ${label} denemesi yok.` : `${formatNet(metric.current)} / ${formatNumber(metric.target)}`}
         </span>
       </div>
       {metric.current !== null && (
@@ -108,11 +117,11 @@ export default function MentorSummary({
   const competencyHighlights = selectCompetencyHighlights(competencyMap)
 
   return (
-    <section className="mb-8 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-white p-5" aria-labelledby="mentor-summary-title">
+    <section className="mb-5 rounded-2xl border border-indigo-100 bg-slate-50/70 p-4 sm:p-5" aria-labelledby="mentor-summary-title">
       <div className="flex flex-col gap-3 border-b border-indigo-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h4 id="mentor-summary-title" className="text-lg font-bold text-gray-800">Mentor Özeti</h4>
-          <p className="mt-1 text-sm text-gray-500">Mevcut öğrenci verilerinden kural tabanlı olarak hesaplanır.</p>
+          <p className="mt-1 text-sm text-gray-500">Öğrencinin son durumu, hedefleri ve takip öncelikleri.</p>
         </div>
         <StudentStatusBadge status={status} />
       </div>
@@ -131,7 +140,7 @@ export default function MentorSummary({
             <h5 className="text-xs font-bold uppercase tracking-wider text-amber-700">Aktif Uyarılar</h5>
             <span className="text-xs font-medium text-gray-500">{alerts.summary}</span>
           </div>
-          <ul className="mt-3 grid gap-2 md:grid-cols-2">
+          <ul className="mt-3 grid gap-2 2xl:grid-cols-2">
             {alerts.alerts.map(alert => (
               <li key={alert.type} className="rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
                 <div className="flex items-center gap-2">
@@ -150,7 +159,7 @@ export default function MentorSummary({
 
       <AIMentorInsightPanel studentId={alerts.studentId} currentFingerprint={currentFingerprint} />
 
-      <div className="mt-4 grid gap-5 md:grid-cols-2">
+      <div className="mt-4 grid gap-5 2xl:grid-cols-2">
         <div>
           <h5 className="text-xs font-bold uppercase tracking-wider text-gray-500">Son dönem</h5>
           <dl className="mt-2">
@@ -158,7 +167,7 @@ export default function MentorSummary({
             <SummaryRow label="AYT">{comparisonText(metrics.ayt)}</SummaryRow>
             <SummaryRow label="Çalışma">{comparisonText(metrics.studyHours, ' saat')}</SummaryRow>
             <SummaryRow label="Görev uyumu">
-              {metrics.taskCompletionRate === null ? 'Henüz değerlendirilebilir görev yok' : formatNumber(metrics.taskCompletionRate, '%')}
+              {metrics.taskCompletionRate === null ? 'Henüz değerlendirilebilir görev yok' : `%${formatNumber(metrics.taskCompletionRate)}`}
             </SummaryRow>
             <SummaryRow label="Açık / geciken görev">
               {metrics.totalTasks === 0 ? 'Henüz görev yok' : `${metrics.openTasks} / ${metrics.overdueTasks}`}
@@ -212,13 +221,13 @@ export default function MentorSummary({
 
       <div className="mt-5 border-t border-indigo-100 pt-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h5 className="text-xs font-bold uppercase tracking-wider text-indigo-600">🎯 Hedefe İlerleme</h5>
+          <h5 className="text-xs font-bold uppercase tracking-wider text-indigo-600">Hedefe İlerleme</h5>
           <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-700">{goalProgress.label}</span>
         </div>
         {!goalProgress.hasGoal ? (
           <p className="mt-3 rounded-xl border border-dashed border-indigo-200 bg-white/60 p-3 text-sm text-gray-500">Henüz ana hedef belirlenmedi.</p>
         ) : (
-          <div className="mt-3 grid gap-4 md:grid-cols-2">
+          <div className="mt-3 grid gap-4 2xl:grid-cols-2">
             <div className="space-y-2">
               {(goalProgress.goal?.university_name || goalProgress.goal?.program_name || typeof goalProgress.goal?.target_rank === 'number') && (
                 <div className="rounded-xl border border-indigo-100 bg-white/80 p-3 text-sm text-gray-700">
@@ -247,7 +256,7 @@ export default function MentorSummary({
         {!competencyMap.hasReliableData ? (
           <p className="mt-3 rounded-xl border border-dashed border-purple-200 bg-white/60 p-3 text-sm text-gray-500">Henüz yeterli konu verisi yok.</p>
         ) : (
-          <div className="mt-3 grid gap-4 md:grid-cols-3">
+          <div className="mt-3 grid gap-4 2xl:grid-cols-3">
             <CompetencyList title="Güçlü alanlar" topics={competencyHighlights.strong} className="text-emerald-600" />
             <CompetencyList
               title="Gelişen alanlar"
