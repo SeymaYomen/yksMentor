@@ -32,7 +32,7 @@ test('güçlü veriler GREEN sonucu ve açıklanabilir nedenler üretir', () => 
   })
 
   assert.equal(result.level, 'green')
-  assert.equal(result.metrics.taskCompletionRate, 75)
+  assert.equal(result.metrics.taskCompletionRate, 100)
   assert.ok(result.reasons.length > 0)
   assert.ok(result.positives.some(reason => reason.includes('TYT')))
 })
@@ -81,7 +81,8 @@ test('tekil dikkat sinyalleri YELLOW sonucu üretir', () => {
 test('verisiz öğrenci RED olmaz ve açık yetersiz veri durumu döner', () => {
   const result = calculateStudentStatus({ now, performance: [], tasks: [], meetings: [] })
 
-  assert.equal(result.level, 'yellow')
+  assert.equal(result.level, 'neutral')
+  assert.equal(result.label, 'Veri birikiyor')
   assert.equal(result.hasEnoughData, false)
   assert.match(result.reasons[0], /yeterli veri yok/i)
 })
@@ -101,4 +102,48 @@ test('sıfır değeri eksik veri sayılmaz', () => {
   assert.equal(result.metrics.tyt.current, 4)
   assert.equal(result.metrics.tyt.trend, 'up')
   assert.equal(result.level, 'green')
+})
+
+test('future, today, undated and invalid open tasks are not completion evidence', () => {
+  for (const due_date of ['2026-09-10', '2026-08-31', null, '', 'invalid', '2026-02-30']) {
+    const result = calculateStudentStatus({ now, performance: [], tasks: [{ status: false, due_date }], meetings: [] })
+    assert.equal(result.metrics.taskCompletionRate, null)
+    assert.equal(result.metrics.evaluatedTasks, 0)
+    assert.equal(result.metrics.openTasks, 1)
+    assert.equal(result.metrics.overdueTasks, 0)
+    assert.equal(result.level, 'neutral')
+    assert.equal(result.hasEnoughData, false)
+    assert.deepEqual(result.warnings, [])
+    assert.doesNotMatch(result.label, /Takip edilmeli/)
+  }
+})
+
+test('one overdue task preserves real warning despite insufficient general evidence', () => {
+  const result = calculateStudentStatus({ now, performance: [], tasks: [{ status: false, due_date: '2026-08-30' }], meetings: [] })
+  assert.equal(result.hasEnoughData, false)
+  assert.equal(result.level, 'yellow')
+  assert.equal(result.metrics.overdueTasks, 1)
+  assert.equal(result.metrics.taskCompletionRate, 0)
+  assert.match(result.warnings.join(' '), /son teslim tarihini geçti/)
+})
+
+test('completed and past-due history determines ratio, future tasks cannot dilute it', () => {
+  const result = calculateStudentStatus({ now, performance: [], meetings: [], tasks: [
+    { status: true }, { status: true, due_date: '2026-09-10' },
+    { status: false, due_date: '2026-08-30' }, { status: false, due_date: '2026-08-29' },
+    ...Array.from({ length: 10 }, () => ({ status: false, due_date: '2026-09-10' })),
+  ] })
+  assert.equal(result.metrics.totalTasks, 14)
+  assert.equal(result.metrics.evaluatedTasks, 4)
+  assert.equal(result.metrics.taskCompletionRate, 50)
+  assert.equal(result.hasEnoughData, true)
+})
+
+test('empty or isolated measurements do not establish meaningful history', () => {
+  for (const performance of [[{}, {}], [{ tyt_net: null }, { daily_hours: null }], [{ tyt_net: 0 }], [{ tyt_net: 20 }, { daily_hours: 2 }]]) {
+    const result = calculateStudentStatus({ now, performance, tasks: [], meetings: [] })
+    assert.equal(result.hasEnoughData, false)
+    assert.equal(result.level, 'neutral')
+    assert.equal(result.metrics.taskCompletionRate, null)
+  }
 })

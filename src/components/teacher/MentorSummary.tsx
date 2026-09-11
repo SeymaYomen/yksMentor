@@ -118,8 +118,10 @@ export default function MentorSummary({
       </div>
 
       {!status.hasEnoughData && (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Henüz güvenilir bir değerlendirme için yeterli performans, görev veya tamamlanmış görüşme verisi yok.
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+          {status.warnings.length > 0 || alerts.alerts.length > 0
+            ? 'Genel değerlendirme için veri sınırlı. Mevcut uyarılar gözlenen gecikme veya risklere dayanıyor.'
+            : 'Henüz güvenilir bir değerlendirme için yeterli performans, çalışma veya değerlendirilebilir görev verisi yok.'}
         </div>
       )}
 
@@ -156,7 +158,7 @@ export default function MentorSummary({
             <SummaryRow label="AYT">{comparisonText(metrics.ayt)}</SummaryRow>
             <SummaryRow label="Çalışma">{comparisonText(metrics.studyHours, ' saat')}</SummaryRow>
             <SummaryRow label="Görev uyumu">
-              {metrics.taskCompletionRate === null ? 'Henüz görev yok' : formatNumber(metrics.taskCompletionRate, '%')}
+              {metrics.taskCompletionRate === null ? 'Henüz değerlendirilebilir görev yok' : formatNumber(metrics.taskCompletionRate, '%')}
             </SummaryRow>
             <SummaryRow label="Açık / geciken görev">
               {metrics.totalTasks === 0 ? 'Henüz görev yok' : `${metrics.openTasks} / ${metrics.overdueTasks}`}

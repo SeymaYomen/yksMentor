@@ -2,11 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import ts from 'typescript'
+import React from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 
 function compile(sourcePath, requireImpl = () => ({})) {
   const source = readFileSync(new URL(sourcePath, import.meta.url), 'utf8')
   const compiled = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.React },
   })
   const loaded = { exports: {} }
   new Function('exports', 'module', 'require', compiled.outputText)(loaded.exports, loaded, requireImpl)
@@ -30,6 +32,7 @@ function status(overrides = {}) {
   const metrics = {
     taskCompletionRate: null,
     totalTasks: 0,
+    evaluatedTasks: 0,
     openTasks: 0,
     overdueTasks: 0,
     performanceTrend: 'insufficient',
@@ -117,7 +120,7 @@ test('ciddi çoklu negatif sinyal kritik öncelik ve açıklanabilir kanıt üre
         tyt: comparison({ previous: 74, current: 65, delta: -9, trend: 'down' }),
         ayt: comparison({ previous: 45, current: 38, delta: -7, trend: 'down' }),
         studyHours: comparison({ previous: 5, current: 2, delta: -3, trend: 'down' }),
-        taskCompletionRate: 25, totalTasks: 4, openTasks: 3, overdueTasks: 3,
+        taskCompletionRate: 25, totalTasks: 4, evaluatedTasks: 4, openTasks: 3, overdueTasks: 3,
       },
     }),
   })
@@ -204,4 +207,70 @@ test('yüksek öncelikte yakın görüşme varsa otomatik planlama önerisi üre
   assert.equal(result.priority, 'critical')
   assert.equal(result.needsMeeting, false)
   assert.notEqual(result.suggestedAction, 'Görüşme planlanması önerilir.')
+})
+
+function evidenceCase(tasks = [], overrides = {}) {
+  const studentStatus = statusModule.calculateStudentStatus({ now, tasks, performance: [], meetings: [] })
+  return { studentStatus, result: calculate({ studentStatus, tasks, performance: [], meetings: [], studentCreatedAt: null, ...overrides }) }
+}
+
+test('future tasks never create completion alerts, even with many open tasks', () => {
+  for (const count of [1, 10]) {
+    const { studentStatus, result } = evidenceCase(Array.from({ length: count }, () => ({ status: false, due_date: '2026-09-12' })))
+    assert.equal(studentStatus.metrics.taskCompletionRate, null)
+    assert.equal(result.priority, 'low')
+    assert.deepEqual(result.alerts, [])
+  }
+})
+
+test('insufficient assessment does not suppress overdue, followup or established data gap risks', () => {
+  const { studentStatus, result } = evidenceCase([{ status: false, due_date: '2026-09-01' }])
+  assert.equal(studentStatus.hasEnoughData, false)
+  assert.deepEqual(result.alerts.map(a => a.type), ['TASK_COMPLIANCE'])
+  assert.equal(result.priority, 'medium')
+  assert.match(result.alerts[0].reason, /1 açık görev son teslim tarihini geçti/)
+  assert.ok(evidenceCase([], { actionItems: [actionItem()] }).result.alerts.some(a => a.type === 'FOLLOWUP_OVERDUE'))
+  assert.ok(evidenceCase([], { studentCreatedAt: '2026-08-01' }).result.alerts.some(a => a.type === 'DATA_GAP'))
+})
+
+test('completion alert uses evaluated count, retaining existing low-rate thresholds', () => {
+  const { result } = evidenceCase([
+    { status: true }, ...Array.from({ length: 3 }, () => ({ status: false, due_date: '2026-09-01' })),
+    ...Array.from({ length: 10 }, () => ({ status: false, due_date: '2026-09-12' })),
+  ])
+  const alert = result.alerts.find(a => a.type === 'TASK_COMPLIANCE')
+  assert.equal(alert.severity, 'high')
+  assert.equal(alert.evidence.taskCompletionRate, 25)
+  assert.equal(alert.evidence.evaluatedTasks, 4)
+  assert.match(alert.reason, /Değerlendirilebilir 4 görevin %25/)
+})
+
+const reactDependency = { ...React, default: React }
+const badge = compile('../src/components/teacher/StudentStatusBadge.tsx', () => reactDependency)
+const summary = compile('../src/components/teacher/MentorSummary.tsx', id => {
+  if (id === 'react') return reactDependency
+  if (id === './StudentStatusBadge') return badge
+  if (id === './AIMentorInsightPanel') return { default: () => null }
+  if (id === '../../lib/competencyMap') return { selectCompetencyHighlights: () => ({ strong: [], developing: [], attention: [] }) }
+  if (id === '../../lib/aiMentorContext') return { buildAIMentorContext: () => ({}) }
+  throw new Error(`Unexpected presentation dependency: ${id}`)
+})
+function renderSummary(tasks) {
+  const { studentStatus, result } = evidenceCase(tasks)
+  return renderToStaticMarkup(React.createElement(summary.default, {
+    displayName: 'Öğrenci', status: studentStatus, alerts: result, goalProgress: emptyGoal(), competencyMap: emptyCompetency(),
+  }))
+}
+test('Mentor Summary renders neutral no-data without zero completion or follow-up label', () => {
+  const html = renderSummary([{ status: false, due_date: '2026-09-12' }])
+  assert.match(html, /Veri birikiyor/)
+  assert.match(html, /Henüz değerlendirilebilir görev yok/)
+  assert.doesNotMatch(html, /Takip edilmeli|0%|%0|Aktif Uyarılar|border-amber-200|border-red-200/)
+})
+test('Mentor Summary explains independent overdue risk when general data is limited', () => {
+  const html = renderSummary([{ status: false, due_date: '2026-09-01' }])
+  assert.match(html, /Aktif Uyarılar/)
+  assert.match(html, /1 açık görev son teslim tarihini geçti/)
+  assert.match(html, /Genel değerlendirme için veri sınırlı/)
+  assert.doesNotMatch(html, /Henüz güvenilir bir değerlendirme için yeterli/)
 })

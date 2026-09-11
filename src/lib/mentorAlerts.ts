@@ -208,14 +208,14 @@ function goalOffTrackAlert(goalProgress: GoalProgressResult): MentorAlert | null
 }
 
 function taskComplianceAlert(status: StudentStatusResult): MentorAlert | null {
-  const { taskCompletionRate, totalTasks, overdueTasks, openTasks } = status.metrics
+  const { taskCompletionRate, evaluatedTasks, totalTasks, overdueTasks, openTasks } = status.metrics
   const lowCompletion = taskCompletionRate !== null &&
-    totalTasks >= STUDENT_STATUS_RULES.minimumTasksForLowRate &&
+    evaluatedTasks >= STUDENT_STATUS_RULES.minimumTasksForLowRate &&
     taskCompletionRate < STUDENT_STATUS_RULES.lowTaskCompletionRate
   if (!lowCompletion && overdueTasks === 0) return null
 
   const reasons: string[] = []
-  if (lowCompletion) reasons.push(`Son ${totalTasks} görevin %${formatNumber(taskCompletionRate as number)}’i tamamlandı.`)
+  if (lowCompletion) reasons.push(`Değerlendirilebilir ${evaluatedTasks} görevin %${formatNumber(taskCompletionRate as number)}’i tamamlandı.`)
   if (overdueTasks > 0) reasons.push(`${overdueTasks} açık görev son teslim tarihini geçti.`)
   const severity = overdueTasks >= MENTOR_ALERT_RULES.highOverdueTaskCount ||
     (lowCompletion && overdueTasks >= STUDENT_STATUS_RULES.multipleOverdueTasks)
@@ -227,7 +227,7 @@ function taskComplianceAlert(status: StudentStatusResult): MentorAlert | null {
     severity,
     title: lowCompletion ? 'Görev uyumu düşük' : 'Geciken görev var',
     reason: reasons.join(' '),
-    evidence: { taskCompletionRate, totalTasks, openTasks, overdueTasks },
+    evidence: { taskCompletionRate, evaluatedTasks, totalTasks, openTasks, overdueTasks },
   }
 }
 

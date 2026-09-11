@@ -1,4 +1,4 @@
-export type StudentStatusLevel = 'green' | 'yellow' | 'red'
+export type StudentStatusLevel = 'green' | 'yellow' | 'red' | 'neutral'
 export type TrendDirection = 'up' | 'down' | 'stable' | 'insufficient'
 
 export type PerformanceSignal = {
@@ -36,6 +36,7 @@ export type MetricComparison = {
 export type StudentStatusMetrics = {
   taskCompletionRate: number | null
   totalTasks: number
+  evaluatedTasks: number
   openTasks: number
   overdueTasks: number
   performanceTrend: TrendDirection
@@ -49,7 +50,7 @@ export type StudentStatusMetrics = {
 
 export type StudentStatusResult = {
   level: StudentStatusLevel
-  label: 'İyi ilerliyor' | 'Takip edilmeli' | 'Müdahale gerekli'
+  label: 'İyi ilerliyor' | 'Takip edilmeli' | 'Müdahale gerekli' | 'Veri birikiyor'
   reasons: string[]
   warnings: string[]
   positives: string[]
@@ -183,10 +184,15 @@ export function calculateStudentStatus(input: StudentStatusInput): StudentStatus
   const completedTasks = input.tasks.filter(task => task.status === true).length
   const openTasks = totalTasks - completedTasks
   const today = localDateKey(now)
-  const overdueTasks = input.tasks.filter(task => (
-    task.status !== true && typeof task.due_date === 'string' && task.due_date.slice(0, 10) < today
-  )).length
-  const taskCompletionRate = totalTasks > 0 ? round((completedTasks / totalTasks) * 100, 0) : null
+  // Date-only deadlines remain open through the end of their local calendar day.
+  const isPastDue = (task: TaskSignal) => {
+    const day = task.due_date?.slice(0, 10)
+    return !!day && /^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(Date.parse(day)) &&
+      new Date(day).toISOString().slice(0, 10) === day && day < today
+  }
+  const overdueTasks = input.tasks.filter(task => task.status !== true && isPastDue(task)).length
+  const evaluatedTasks = completedTasks + overdueTasks
+  const taskCompletionRate = evaluatedTasks > 0 ? round((completedTasks / evaluatedTasks) * 100, 0) : null
   const { lastMeetingDays, nextMeetingAt } = meetingMetrics(input.meetings, now)
 
   const positives: string[] = []
@@ -213,7 +219,7 @@ export function calculateStudentStatus(input: StudentStatusInput): StudentStatus
     if (taskCompletionRate >= STUDENT_STATUS_RULES.highTaskCompletionRate) {
       positives.push(`Görevlerin %${formatNumber(taskCompletionRate)}’i tamamlandı.`)
     } else if (
-      totalTasks >= STUDENT_STATUS_RULES.minimumTasksForLowRate &&
+      evaluatedTasks >= STUDENT_STATUS_RULES.minimumTasksForLowRate &&
       taskCompletionRate < STUDENT_STATUS_RULES.lowTaskCompletionRate
     ) {
       strongWarnings.push(`Görev tamamlama oranı %${formatNumber(taskCompletionRate)} ile düşük.`)
@@ -237,10 +243,13 @@ export function calculateStudentStatus(input: StudentStatusInput): StudentStatus
   }
 
   const warnings = [...strongWarnings, ...softWarnings]
-  const hasEnoughData = input.performance.length >= 2 || totalTasks > 0 || lastMeetingDays !== null
+  const hasEnoughData = performanceTrend !== 'insufficient' || studyHours.trend !== 'insufficient' ||
+    evaluatedTasks >= STUDENT_STATUS_RULES.minimumTasksForLowRate
   let level: StudentStatusLevel
 
-  if (
+  if (!hasEnoughData && warnings.length === 0) {
+    level = 'neutral'
+  } else if (
     strongWarnings.length >= STUDENT_STATUS_RULES.redStrongWarningCount ||
     (
       strongWarnings.length >= STUDENT_STATUS_RULES.redMixedStrongWarningCount &&
@@ -254,7 +263,7 @@ export function calculateStudentStatus(input: StudentStatusInput): StudentStatus
     level = 'green'
   }
 
-  const label = level === 'green'
+  const label = level === 'neutral' ? 'Veri birikiyor' : level === 'green'
     ? 'İyi ilerliyor'
     : level === 'red'
       ? 'Müdahale gerekli'
@@ -275,6 +284,7 @@ export function calculateStudentStatus(input: StudentStatusInput): StudentStatus
     metrics: {
       taskCompletionRate,
       totalTasks,
+      evaluatedTasks,
       openTasks,
       overdueTasks,
       performanceTrend,
