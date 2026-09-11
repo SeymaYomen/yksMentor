@@ -10,6 +10,8 @@ import {
 import { supabase } from '../../lib/supabase'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
+import GoalAutocomplete from './GoalAutocomplete'
+import { UNIVERSITY_SUGGESTIONS, PROGRAM_SUGGESTIONS } from '../../lib/goalSuggestions'
 
 type Props = {
   studentId: string
@@ -108,17 +110,14 @@ export default function GoalForm({ studentId, goal, onSaved, onCancel }: Props) 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <p className="text-sm text-gray-500">Size uygun hedef alanlarını doldurun.</p>
+      <fieldset className="min-w-0 space-y-3">
+        <legend className="text-sm font-bold text-slate-900">Eğitim hedefi</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <GoalAutocomplete label="Üniversite" value={universityName} onChange={setUniversityName} options={UNIVERSITY_SUGGESTIONS} />
+          <GoalAutocomplete label="Bölüm" value={programName} onChange={setProgramName} options={PROGRAM_SUGGESTIONS} />
         <label className="text-sm font-semibold text-gray-700">
-          Üniversite <span className="font-normal text-gray-400">(isteğe bağlı)</span>
-          <Input className="mt-1" maxLength={GOAL_FIELD_LIMITS.textLength.max} value={universityName} onChange={event => setUniversityName(event.target.value)} />
-        </label>
-        <label className="text-sm font-semibold text-gray-700">
-          Bölüm <span className="font-normal text-gray-400">(isteğe bağlı)</span>
-          <Input className="mt-1" maxLength={GOAL_FIELD_LIMITS.textLength.max} value={programName} onChange={event => setProgramName(event.target.value)} />
-        </label>
-        <label className="text-sm font-semibold text-gray-700">
-          Puan türü <span className="font-normal text-gray-400">(isteğe bağlı)</span>
+          Puan türü
           <select className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3" value={scoreType} onChange={event => setScoreType(event.target.value as GoalScoreType | '')}>
             <option value="">Seçiniz</option>
             <option value="sayisal">SAY</option>
@@ -128,29 +127,43 @@ export default function GoalForm({ studentId, goal, onSaved, onCancel }: Props) 
             <option value="tyt">TYT</option>
           </select>
         </label>
+        </div>
+      </fieldset>
+      <fieldset className="min-w-0 space-y-3">
+        <legend className="text-sm font-bold text-slate-900">Performans hedefi</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm font-semibold text-gray-700">
-          Hedef sıralama <span className="font-normal text-gray-400">(isteğe bağlı)</span>
-          <Input className="mt-1" type="number" min={GOAL_FIELD_LIMITS.rank.min} step="1" value={targetRank} onChange={event => setTargetRank(event.target.value)} />
-        </label>
-        <label className="text-sm font-semibold text-gray-700">
-          TYT net hedefi <span className="font-normal text-gray-400">(isteğe bağlı)</span>
+          TYT net hedefi
           <Input className="mt-1" type="number" min={GOAL_FIELD_LIMITS.tytNet.min} max={GOAL_FIELD_LIMITS.tytNet.max} step="0.01" value={targetTytNet} onChange={event => setTargetTytNet(event.target.value)} />
         </label>
         <label className="text-sm font-semibold text-gray-700">
-          AYT net hedefi <span className="font-normal text-gray-400">(isteğe bağlı)</span>
+          AYT net hedefi
           <Input className="mt-1" type="number" min={GOAL_FIELD_LIMITS.aytNet.min} max={GOAL_FIELD_LIMITS.aytNet.max} step="0.01" value={targetAytNet} onChange={event => setTargetAytNet(event.target.value)} />
         </label>
+        </div>
+      </fieldset>
+      <fieldset className="min-w-0 space-y-3">
+        <legend className="text-sm font-bold text-slate-900">Sonuç hedefi</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm font-semibold text-gray-700">
-          Hedef puan <span className="font-normal text-gray-400">(isteğe bağlı)</span>
+          Hedef sıralama
+          <Input className="mt-1" type="number" min={GOAL_FIELD_LIMITS.rank.min} step="1" value={targetRank} onChange={event => setTargetRank(event.target.value)} />
+        </label>
+        <label className="text-sm font-semibold text-gray-700">
+          Hedef puan
           <Input className="mt-1" type="number" min={GOAL_FIELD_LIMITS.score.min} step="0.01" value={targetScore} onChange={event => setTargetScore(event.target.value)} />
         </label>
+        </div>
+      </fieldset>
+      <fieldset className="min-w-0 space-y-3">
+        <legend className="text-sm font-bold text-slate-900">Zaman</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm font-semibold text-gray-700">
-          Hedef tarihi <span className="font-normal text-gray-400">(isteğe bağlı)</span>
+          Hedef tarihi
           <Input className="mt-1" type="date" value={targetDate} onChange={event => setTargetDate(event.target.value)} />
         </label>
-      </div>
-
-      <p className="text-xs text-gray-500">Üniversite/bölüm/sıralama veya TYT/AYT net hedeflerinden size uygun olanları doldurun.</p>
+        </div>
+      </fieldset>
       {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       <div className="flex flex-wrap justify-end gap-2">
         {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>İptal</Button>}
