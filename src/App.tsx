@@ -6,6 +6,7 @@ import Login from './pages/Auth/Login'
 import Register from './pages/Auth/Register'
 const TeacherDashboard = lazy(() => import('./pages/Teacher/Dashboard'))
 const StudentDashboard = lazy(() => import('./pages/Student/Dashboard'))
+const MockExams = lazy(() => import('./pages/Student/MockExams'))
 const Meetings = lazy(() => import('./pages/Meetings'))
 import NotFound from './pages/NotFound'
 const TeacherInviteActivation = lazy(() => import('./pages/Auth/TeacherInviteActivation'))
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/teacher/meetings" element={<ProtectedRoute requiredRole="teacher"><Meetings /></ProtectedRoute>} />
 
           <Route path="/student" element={<ProtectedRoute requiredRole="student"><StudentDashboard /></ProtectedRoute>} />
+          <Route path="/student/exams" element={<ProtectedRoute requiredRole="student"><MockExams /></ProtectedRoute>} />
           <Route path="/student/meetings" element={<ProtectedRoute requiredRole="student"><Meetings /></ProtectedRoute>} />
         </Route>
 

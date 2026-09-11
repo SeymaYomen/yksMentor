@@ -6,6 +6,7 @@ import {
   type StudentGoal,
 } from '../lib/goalProgress'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { loadAssessmentData } from '../lib/mockExamData'
 import type { StudentStatusResult } from '../lib/studentStatus'
 
 export function useGoalProgress(studentId: string, studentStatus?: StudentStatusResult) {
@@ -38,16 +39,12 @@ export function useGoalProgress(studentId: string, studentStatus?: StudentStatus
           .eq('student_id', studentId)
           .eq('is_active', true)
           .maybeSingle(),
-        supabase
-          .from('performance')
-          .select('tyt_net, ayt_net, date, created_at')
-          .eq('student_id', studentId),
+        loadAssessmentData([studentId]),
       ])
 
       if (goalResult.error) throw goalResult.error
-      if (performanceResult.error) throw performanceResult.error
       setGoal((goalResult.data as StudentGoal | null) ?? null)
-      setPerformance((performanceResult.data ?? []) as GoalPerformanceRow[])
+      setPerformance(performanceResult.performance)
     } catch (caughtError) {
       console.error('Goal progress could not be loaded:')
       setError(caughtError instanceof Error ? caughtError : new Error(String(caughtError)))

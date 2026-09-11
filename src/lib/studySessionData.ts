@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { loadAssessmentData } from './mockExamData'
 import { mergeStudyHours, prepareStudySession, type StudyDuration, type StudyPerformanceRow, type StudySession, type StudySessionInput } from './studySessions'
 
 function client() {
@@ -34,11 +35,10 @@ export async function createStudySession(input: StudySessionInput): Promise<Stud
 export async function loadStudyPerformance(studentIds: string[]): Promise<StudyPerformanceRow[]> {
   if (!studentIds.length) return []
   const db = client()
-  const [legacy, sessions] = await Promise.all([
-    readPages<StudyPerformanceRow>((from, to) => db.from('performance')
-      .select('id, student_id, daily_hours, tyt_net, ayt_net, date, created_at').in('student_id', studentIds).order('id').range(from, to)),
+  const [assessment, sessions] = await Promise.all([
+    loadAssessmentData(studentIds),
     readPages<StudyDuration>((from, to) => db.from('study_sessions')
       .select('student_id, study_date, duration_minutes').in('student_id', studentIds).order('id').range(from, to)),
   ])
-  return mergeStudyHours(legacy, sessions)
+  return mergeStudyHours(assessment.performance, sessions)
 }

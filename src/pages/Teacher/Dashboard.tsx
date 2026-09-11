@@ -186,7 +186,7 @@ export default function TeacherDashboard() {
                     </svg>
                     Performans Grafiği
                   </h4>
-                  <p className="text-sm text-gray-500 mb-4">Son günlerdeki çalışma saatleri ve net gelişimleri.</p>
+                  <p className="text-sm text-gray-500 mb-4">Son günlerdeki çalışma saatleri.</p>
                 </div>
                 
                 <div className="bg-gray-50 p-4 rounded-xl border">

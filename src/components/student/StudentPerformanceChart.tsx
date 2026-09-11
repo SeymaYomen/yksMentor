@@ -14,8 +14,6 @@ export default function StudentPerformanceChart({ studentId }: { studentId: stri
   const chartData = data.map((d) => ({
     date: d.date ? new Date(d.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : '',
     'Günlük Saat': d.daily_hours ?? null,
-    'TYT Net': d.tyt_net ?? null,
-    'AYT Net': d.ayt_net ?? null,
   }))
 
   return (
@@ -28,8 +26,6 @@ export default function StudentPerformanceChart({ studentId }: { studentId: stri
           <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb' }} />
           <Legend />
           <Line type="monotone" dataKey="Günlük Saat" stroke="#2563eb" strokeWidth={2} dot={{ r: 4 }} connectNulls />
-          <Line type="monotone" dataKey="TYT Net" stroke="#16a34a" strokeWidth={2} dot={{ r: 4 }} connectNulls />
-          <Line type="monotone" dataKey="AYT Net" stroke="#d97706" strokeWidth={2} dot={{ r: 4 }} connectNulls />
         </LineChart>
       </ResponsiveContainer>
     </div>

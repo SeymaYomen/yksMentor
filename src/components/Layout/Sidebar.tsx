@@ -29,6 +29,7 @@ export default function Sidebar({ role }: { role: UserRole }) {
   ]
 
   const studentLinks = [
+    { to: '/student/exams', label: 'Denemelerim', icon: PresentationChartLineIcon },
     {
       to: '/student',
       label: 'Görevlerim & Çalışma',

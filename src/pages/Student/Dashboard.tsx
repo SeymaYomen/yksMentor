@@ -3,6 +3,7 @@ import Card from '../../components/ui/Card'
 import TaskList from '../../components/student/TaskList'
 import PerformanceForm from '../../components/student/PerformanceForm'
 import StudentPerformanceChart from '../../components/student/StudentPerformanceChart'
+import MockExamSummary from '../../components/student/MockExamSummary'
 import GoalProgressCard from '../../components/goals/GoalProgressCard'
 import TopicCompetencyMap from '../../components/student/TopicCompetencyMap'
 import { useAuth } from '../../hooks/useAuth'
@@ -219,10 +220,11 @@ export default function StudentDashboard() {
             {studentId ? <PerformanceForm studentId={studentId} /> : <div className="text-sm text-gray-400">Giriş yapınız.</div>}
           </Card>
 
+          <MockExamSummary studentId={studentId} />
           {/* Gelişim Grafiği */}
           <Card className="p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              📈 TYT - AYT & Çalışma Saati Trendi
+              📈 Çalışma Saati Trendi
             </h3>
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <StudentPerformanceChart studentId={studentId} />

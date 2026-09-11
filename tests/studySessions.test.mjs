@@ -14,6 +14,12 @@ function load(path, dependencies = {}) {
   return module.exports
 }
 const model = load('../src/lib/studySessions.ts')
+function loadService(supabase) {
+  const assessment = load('../src/lib/mockExamData.ts', {
+    './supabase': { supabase }, './mockExams': load('../src/lib/mockExams.ts'),
+  })
+  return load('../src/lib/studySessionData.ts', { './supabase': { supabase }, './studySessions': model, './mockExamData': assessment })
+}
 const { dailyStudyTotals, mergeStudyHours, prepareStudySession, recentStudyTopics, localStudyDate } = model
 const session = (overrides = {}) => ({ id: 's1', student_id: 'alice', study_date: '2026-09-11', subject_id: 'math', topic_id: 'problems',
   activity_type: 'question_practice', duration_minutes: 55, question_count: 70, correct_count: 60, wrong_count: 8, blank_count: 2,
@@ -104,7 +110,7 @@ test('create service persists only study sessions, never assessment evidence', a
     assert.equal(table, 'study_sessions')
     return { insert(payload) { writes.push(payload); return { select() { return { single: async () => ({ data: payload, error: null }) } } } } }
   } }
-  const service = load('../src/lib/studySessionData.ts', { './supabase': { supabase }, './studySessions': model })
+  const service = loadService(supabase)
   await service.createStudySession(session())
   await service.createStudySession(session({ activity_type: 'topic_review' }))
   assert.equal(writes[0].correct_count, 60)
@@ -126,12 +132,12 @@ test('daily practice is isolated from competency loaders and UI assessment write
 
 test('shared loader paginates sessions and combines legacy totals without truncation', async () => {
   const ranges = []
-  const source = { performance: [legacy()], study_sessions: Array.from({ length: 1001 }, (_, i) => session({ id: String(i), duration_minutes: 1 })) }
+  const source = { mock_exams: [], performance: [legacy()], study_sessions: Array.from({ length: 1001 }, (_, i) => session({ id: String(i), duration_minutes: 1 })) }
   const supabase = { from(table) {
     return { select() { return this }, in(column, ids) { assert.equal(column, 'student_id'); assert.deepEqual(ids, ['alice']); return this },
       order() { return this }, range(from, to) { ranges.push([table, from, to]); return Promise.resolve({ data: source[table].slice(from, to + 1), error: null }) } }
   } }
-  const service = load('../src/lib/studySessionData.ts', { './supabase': { supabase }, './studySessions': model })
+  const service = loadService(supabase)
   const rows = await service.loadStudyPerformance(['alice'])
   assert.equal(rows[0].daily_hours, 1001 / 60)
   assert.equal(rows[0].tyt_net, 80)
@@ -141,9 +147,9 @@ test('shared loader paginates sessions and combines legacy totals without trunca
 test('loader propagates session read errors rather than showing misleading legacy totals', async () => {
   const supabase = { from(table) {
     return { select() { return this }, in() { return this }, order() { return this },
-      range() { return Promise.resolve(table === 'study_sessions' ? { data: null, error: new Error('unavailable') } : { data: [legacy()], error: null }) } }
+      range() { return Promise.resolve(table === 'study_sessions' ? { data: null, error: new Error('unavailable') } : { data: table === 'mock_exams' ? [] : [legacy()], error: null }) } }
   } }
-  const service = load('../src/lib/studySessionData.ts', { './supabase': { supabase }, './studySessions': model })
+  const service = loadService(supabase)
   await assert.rejects(service.loadStudyPerformance(['alice']), /unavailable/)
 })
 
