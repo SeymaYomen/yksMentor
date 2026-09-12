@@ -1,10 +1,10 @@
 import { formatDate, formatNumber } from '../../lib/format'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useAuth } from '../../hooks/useAuth'
 import { loadAcademicCatalog, type AcademicCatalog } from '../../lib/academicData'
 import { loadMockExams, saveMockExam, deleteMockExam } from '../../lib/mockExamData'
-import { examNet, examTotal, previousExamDelta, validateMockExam, type MockExam, type MockExamInput, type MockExamType } from '../../lib/mockExams'
+import { examNet, examTotal, previousExamDelta, validateMockExam, subjectResultError, subjectQuestionLimit, type MockExam, type MockExamInput, type MockExamType } from '../../lib/mockExams'
 import { localStudyDate } from '../../lib/studySessions'
 
 const empty = (): MockExamInput => ({ exam_type: 'TYT', exam_date: localStudyDate(), name: null, difficulty: null,
@@ -19,6 +19,7 @@ export default function MockExams() {
   const [exams, setExams] = useState<MockExam[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const submitting = useRef(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [input, setInput] = useState<MockExamInput>(empty)
@@ -35,28 +36,32 @@ export default function MockExams() {
     return () => { active = false }
   }, [user?.id, retry])
   const name = (id: string) => catalog.subjects.find(s => s.id === id)?.name ?? 'Ders'
+  const validExams = exams.filter(exam => { try { validateMockExam(exam, catalog); return true } catch { return false } })
   const available = catalog.subjects.filter(s => (s.is_active || input.subject_results.some(r => r.subject_id === s.id)) &&
     (input.exam_type === 'BRANCH' ? s.id === input.branch_subject_id : s.exam_type === input.exam_type))
   function next() {
     setError('')
     try {
       if (step === 1) {
-        const results = input.subject_results.length ? input.subject_results : available.map(s => ({ subject_id: s.id, correct_count: 0, wrong_count: 0, blank_count: 0 }))
+        const results = input.subject_results.length ? input.subject_results : available.map(s => ({ subject_id: s.id, correct_count: NaN, wrong_count: NaN, blank_count: NaN }))
         // Metadata validation uses a provisional row; result fields are entered next.
-        validateMockExam({ ...input, subject_results: results, topic_errors: [] }, catalog)
+        validateMockExam({ ...input, subject_results: results.map(row => ({ ...row, correct_count: 0, wrong_count: 0, blank_count: 0 })), topic_errors: [] }, catalog)
         setInput({ ...input, subject_results: results })
       } else validateMockExam(input, catalog)
       setStep(step + 1)
     } catch (e) { setError(message(e)) }
   }
   async function save() {
+    if (submitting.current) return
+    try { validateMockExam(input, catalog) } catch (e) { setError(message(e)); setStep(2); return }
+    submitting.current = true
     setBusy(true); setError(''); setNotice('')
     try {
       await saveMockExam(input, catalog, editing)
       setStep(0); setEditing(null); setInput(empty()); setNotice('Deneme kaydedildi.')
       window.dispatchEvent(new Event('performance_updated'))
       setExams(await loadMockExams([user!.id]))
-    } catch { setError('Deneme kaydedilemedi. Bilgilerini kontrol edip tekrar dene.') } finally { setBusy(false) }
+    } catch { setError('Deneme kaydedilemedi. Bilgilerini kontrol edip tekrar dene.') } finally { submitting.current = false; setBusy(false) }
   }
   async function remove(exam: MockExam) {
     if (!window.confirm('Bu denemeyi silmek istiyor musun?')) return
@@ -90,11 +95,12 @@ export default function MockExams() {
           {step === 2 && <><p className="text-sm text-gray-500">Sonucu olmayan dersi çıkar. Sıfır girilen ders 0 net olarak kaydedilir.</p>
             {input.subject_results.map((r, i) => <div key={r.subject_id} className="rounded-xl border p-3 space-y-2"><h3 className="font-semibold">{name(r.subject_id)}</h3>
               <div className="grid min-w-0 grid-cols-3 gap-2">{(['correct_count', 'wrong_count', 'blank_count'] as const).map((key, k) => <label key={key}>{['Doğru', 'Yanlış', 'Boş'][k]}
-                <input required className={field} type="number" min={0} max={2147483647} step={1} value={Number.isNaN(r[key]) ? '' : r[key]} onChange={e => setInput({ ...input, subject_results: input.subject_results.map((row, index) => index === i ? { ...row, [key]: e.target.valueAsNumber } : row) })} /></label>)}</div>
+                <input required className={field} type="number" min={0} max={subjectQuestionLimit(catalog.subjects.find(s => s.id === r.subject_id)) ?? undefined} step={1} aria-invalid={!!subjectResultError(r, catalog)} aria-describedby={`result-error-${r.subject_id}`} value={Number.isNaN(r[key]) ? '' : r[key]} onChange={e => setInput({ ...input, subject_results: input.subject_results.map((row, index) => index === i ? { ...row, [key]: e.target.valueAsNumber } : row) })} /></label>)}</div>
+              {subjectResultError(r, catalog) && <p id={`result-error-${r.subject_id}`} role="alert" className="text-sm text-red-700">{subjectResultError(r, catalog)}</p>}
               <p>Net: {Number.isFinite(examNet(r.correct_count, r.wrong_count)) ? formatNumber(examNet(r.correct_count, r.wrong_count)) : '—'}</p>
               {input.exam_type !== 'BRANCH' && <button type="button" className="text-sm text-red-700" onClick={() => setInput({ ...input, subject_results: input.subject_results.filter(row => row.subject_id !== r.subject_id), topic_errors: input.topic_errors.filter(t => t.subject_id !== r.subject_id) })}>Dersi çıkar</button>}
             </div>)}
-            {available.filter(s => !input.subject_results.some(r => r.subject_id === s.id)).map(s => <button key={s.id} type="button" className="mr-3 text-indigo-700" onClick={() => setInput({ ...input, subject_results: [...input.subject_results, { subject_id: s.id, correct_count: 0, wrong_count: 0, blank_count: 0 }] })}>{s.name} ekle</button>)}
+            {available.filter(s => !input.subject_results.some(r => r.subject_id === s.id)).map(s => <button key={s.id} type="button" className="mr-3 text-indigo-700" onClick={() => setInput({ ...input, subject_results: [...input.subject_results, { subject_id: s.id, correct_count: NaN, wrong_count: NaN, blank_count: NaN }] })}>{s.name} ekle</button>)}
             <p className="font-bold">Toplam net: {formatNumber(examTotal(input.subject_results))}</p></>}
           {step === 3 && <><p className="text-sm text-gray-500">Yalnız yanlış ve boş sorularını etiketle. Konu etiketlemek zorunlu değil.</p>
             {input.subject_results.filter(r => r.wrong_count + r.blank_count > 0).map(r => <div key={r.subject_id} className="border rounded-xl p-3 space-y-3"><h3 className="font-semibold">{name(r.subject_id)} — {r.wrong_count} yanlış, {r.blank_count} boş</h3>
@@ -110,13 +116,14 @@ export default function MockExams() {
         </fieldset>
       </form>}
       <div className="grid lg:grid-cols-2 gap-4">{(['TYT', 'AYT'] as const).map(type => {
-        const points = [...exams].reverse().filter(e => e.exam_type === type).map(e => ({ date: e.exam_date, net: examTotal(e.subject_results) }))
+        const points = [...validExams].reverse().filter(e => e.exam_type === type).map(e => ({ date: e.exam_date, net: examTotal(e.subject_results) }))
         return <section key={type} className="rounded-2xl bg-white border p-4"><h2 className="font-bold mb-3">{type} Net Trendi</h2>
-          {points.length < 2 ? <p className="text-sm text-gray-500">{points.length ? 'İkinci denemeden sonra trend burada görünecek.' : `Henüz ${type} denemesi yok.`}</p> :
+          {points.length < 2 ? <p className="text-sm text-gray-500">{points.length ? <>Son {type}: {formatNumber(points[0].net)} net. Trend için bir deneme daha gerekli.</> : `Henüz ${type} denemesi yok.`}</p> :
             <div className="h-56" role="img" aria-label={`${type} netleri: ${points.map(p => `${formatDate(p.date, { dateStyle: 'medium' })}: ${formatNumber(p.net)}`).join(', ')}`}><ResponsiveContainer width="100%" height="100%"><LineChart data={points}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" tickFormatter={value => formatDate(value, { day: 'numeric', month: 'short' })} /><YAxis tickFormatter={value => formatNumber(Number(value), 0)} /><Tooltip formatter={value => formatNumber(Number(value))} labelFormatter={value => formatDate(String(value), { dateStyle: 'medium' })} /><Line dataKey="net" name="Net" stroke="#4f46e5" strokeWidth={2} isAnimationActive={false} /></LineChart></ResponsiveContainer></div>}</section>
       })}</div>
       <section className="space-y-3"><h2 className="text-xl font-bold">Geçmiş denemeler</h2>{!exams.length && <p>Henüz deneme yok. Deneme ekleyerek ilerleme trendini görebilirsin.</p>}
-        {exams.map(exam => { const delta = previousExamDelta(exam, exams); return <article key={exam.id} className="rounded-2xl bg-white border p-5 space-y-3">
+        {exams.map(exam => { const valid = validExams.includes(exam); const delta = previousExamDelta(exam, validExams); return <article key={exam.id} className="rounded-2xl bg-white border p-5 space-y-3">
+          {!valid && <p role="status" className="text-sm text-amber-800">Bu eski kaydın alanları geçersiz; ilerleme hesaplarına katılmıyor. Düzenleyerek düzeltebilirsin.</p>}
           <div className="flex flex-wrap justify-between gap-2"><div className="min-w-0"><h3 className="font-bold">{exam.exam_type === 'BRANCH' ? `Branş · ${name(exam.branch_subject_id!)}` : exam.exam_type} · {exam.name || 'İsimsiz deneme'}</h3><time dateTime={exam.exam_date}>{formatDate(exam.exam_date, { dateStyle: 'medium' })}</time></div><strong className="tabular-nums">{formatNumber(examTotal(exam.subject_results))} net</strong></div>
           <p className="text-sm text-gray-500">{delta === null ? 'Önceki aynı tür deneme yok.' : `Önceki aynı tür denemeye göre ${delta > 0 ? '+' : ''}${formatNumber(delta)} net`}</p>
           <ul className="text-sm space-y-1">{exam.subject_results.map(r => <li key={r.subject_id}>{name(r.subject_id)}: {r.correct_count} D / {r.wrong_count} Y / {r.blank_count} B · {formatNumber(examNet(r.correct_count, r.wrong_count))} net</li>)}</ul>

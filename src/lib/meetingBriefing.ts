@@ -1,4 +1,4 @@
-import type { StudentStatusResult } from './studentStatus'
+import { weeklyStudyComparison, type StudentStatusResult } from './studentStatus.ts'
 import type { GoalProgressResult } from './goalProgress'
 import type { CompetencyMapResult } from './competencyMap'
 
@@ -108,31 +108,10 @@ function metricChange(rows: BriefingPerformanceRow[], key: 'tyt_net' | 'ayt_net'
     ))
     .sort((a, b) => a.time - b.time)
 
-  if (values.length < 2) return { previous: null, current: null, delta: null, hasData: false }
+  if (values.length < 2) return { previous: null, current: values[0]?.value ?? null, delta: null, hasData: values.length > 0 }
 
-  const previous = values[0].value
+  const previous = values[values.length - 2].value
   const current = values[values.length - 1].value
-  return { previous, current, delta: round(current - previous), hasData: true }
-}
-
-function weeklyStudyChange(rows: BriefingPerformanceRow[], end: number): BriefingMetricChange {
-  const oneWeek = 7 * 86_400_000
-  const entries = rows
-    .map(row => ({ hours: row.daily_hours, time: performanceTimestamp(row) }))
-    .filter((entry): entry is { hours: number; time: number } => (
-      typeof entry.hours === 'number' && Number.isFinite(entry.hours) && entry.time !== null
-    ))
-  const previousEntries = entries.filter(entry => entry.time > end - 2 * oneWeek && entry.time <= end - oneWeek)
-  const currentEntries = entries.filter(entry => entry.time > end - oneWeek && entry.time <= end)
-
-  // Normalize by recorded days so missing records are not interpreted as zero
-  // study. Two observations per window are required to avoid a fragile trend.
-  if (previousEntries.length < 2 || currentEntries.length < 2) {
-    return { previous: null, current: null, delta: null, hasData: false }
-  }
-
-  const previous = round((previousEntries.reduce((sum, entry) => sum + entry.hours, 0) / previousEntries.length) * 7)
-  const current = round((currentEntries.reduce((sum, entry) => sum + entry.hours, 0) / currentEntries.length) * 7)
   return { previous, current, delta: round(current - previous), hasData: true }
 }
 
@@ -221,9 +200,9 @@ export function buildMeetingBriefing(input: BuildMeetingBriefingInput): MeetingB
       isFirstMeeting: previousMeeting === null,
     },
     performance: {
-      tyt: metricChange(performanceRows, 'tyt_net'),
-      ayt: metricChange(performanceRows, 'ayt_net'),
-      weeklyStudyHours: weeklyStudyChange(performanceRows, end),
+      tyt: metricChange(input.performance.filter(row => (performanceTimestamp(row) ?? Infinity) <= end), 'tyt_net'),
+      ayt: metricChange(input.performance.filter(row => (performanceTimestamp(row) ?? Infinity) <= end), 'ayt_net'),
+      weeklyStudyHours: weeklyStudyComparison(input.performance, now),
     },
     tasks: {
       total: tasks.length,

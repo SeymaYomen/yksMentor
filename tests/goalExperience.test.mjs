@@ -19,7 +19,7 @@ function load(file, overrides = {}) {
     if (name.endsWith('/supabase')) return { supabase: null }
     if (!name.startsWith('.')) return require(name)
     const path = resolve(dirname(filename), name)
-    return load(path + (existsSync(path + '.tsx') ? '.tsx' : '.ts'), overrides)
+    return load(existsSync(path) ? path : path + (existsSync(path + '.tsx') ? '.tsx' : '.ts'), overrides)
   }
   new Function('require', 'exports', 'module', compiled.outputText)(localRequire, module.exports, module)
   return module.exports
@@ -45,12 +45,12 @@ test('university suggestions match Turkish and ASCII case variants', () => {
 test('program suggestions work independently of university', () => {
   assert.deepEqual(filterGoalSuggestions(PROGRAM_SUGGESTIONS, 'yazılım'), ['Yazılım Mühendisliği'])
 })
-test('canonical selection displays unchanged and free text remains valid', () => {
+test('canonical selection displays unchanged and random free text is rejected', () => {
   const universityName = filterGoalSuggestions(UNIVERSITY_SUGGESTIONS, 'balıkesir')[0]
   const programName = filterGoalSuggestions(PROGRAM_SUGGESTIONS, 'yazılım')[0]
   assert.match(markup(progress([], { university_name: universityName, program_name: programName })), /Balıkesir Üniversitesi · Yazılım Mühendisliği/)
   const custom = 'özel bir HEDEF'
-  assert.deepEqual(validateGoalInput({ goalType: 'university_program', universityName: custom }), [])
+  assert.equal(validateGoalInput({ goalType: 'university_program', universityName: custom }).length, 1)
   assert.match(markup(progress([], { university_name: custom })), /özel bir HEDEF/)
 })
 test('missing exams display no data and never fabricated zero progress', () => {
@@ -123,7 +123,7 @@ test('autocomplete keyboard, pointer selection and free typing preserve canonica
   } finally { delete globalThis.requestAnimationFrame }
 })
 
-test('form stores canonical selection and free text through the existing goal RPC', async () => {
+test('form stores canonical selections and blocks random text before the goal RPC', async () => {
   const state = []
   let cursor = 0, saved
   const fakeReact = { ...React, useEffect() {}, useState: initial => {
@@ -144,13 +144,17 @@ test('form stores canonical selection and free text through the existing goal RP
   const education = form.props.children[1].props.children[1].props.children
   education[0].props.onChange('Balıkesir Üniversitesi')
   education[1].props.onChange('Yazılım Mühendisliği')
+  education[0].props.onSelected(true)
+  education[1].props.onSelected(true)
   globalThis.window = { dispatchEvent() {} }
   try {
     await render().props.onSubmit({ preventDefault() {} })
     assert.equal(saved.p_university_name, 'Balıkesir Üniversitesi')
     assert.equal(saved.p_program_name, 'Yazılım Mühendisliği')
     education[0].props.onChange('özel HEDEF')
+    education[0].props.onSelected(false)
+    saved = undefined
     await render().props.onSubmit({ preventDefault() {} })
-    assert.equal(saved.p_university_name, 'özel HEDEF')
+    assert.equal(saved, undefined)
   } finally { delete globalThis.window }
 })

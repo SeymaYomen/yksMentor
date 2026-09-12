@@ -106,6 +106,7 @@ function edgeHarness({ allowed = true, foreignStudent = false, contextFailure = 
       const query = {
         select() { return query }, eq(key, value) { if (key === 'id') id = value; return query },
         maybeSingle() { return query },
+        order() { return query }, range() { return query }, in() { return query },
         then(resolve) {
           const data = table === 'profiles'
             ? id === 'authenticated-teacher' ? { id, role: 'teacher' } : { id: studentId, username: 'Student', role: 'student', mentor_id: foreignStudent ? 'other-teacher' : 'authenticated-teacher', created_at: '2026-09-01' }

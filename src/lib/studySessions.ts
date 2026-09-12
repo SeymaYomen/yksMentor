@@ -74,13 +74,14 @@ export function dailyStudyTotals(sessions: StudyDuration[]) {
 // Preserve every legacy net observation. Supply exactly one duration per session day;
 // null hours on the other legacy rows are ignored by existing metric consumers.
 export function mergeStudyHours(legacy: StudyPerformanceRow[], sessions: StudyDuration[]): StudyPerformanceRow[] {
+  const authoritative = new Set(sessions.map(row => row.student_id))
   const totals = new Map(dailyStudyTotals(sessions).map(row => [`${row.student_id}/${row.study_date}`, row]))
   const used = new Set<string>()
   const rows = legacy.map(row => {
     const day = (row.date || row.created_at || '').slice(0, 10)
     const key = `${row.student_id}/${day}`
     const total = totals.get(key)
-    if (!total) return { ...row }
+    if (!total) return { ...row, daily_hours: authoritative.has(row.student_id) ? null : row.daily_hours }
     const hours = used.has(key) ? null : total.duration_minutes / 60
     used.add(key)
     return { ...row, daily_hours: hours }

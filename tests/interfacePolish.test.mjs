@@ -134,9 +134,10 @@ test('insufficient students without observed alerts do not appear in attention c
   const Center = moduleAt('src/components/teacher/EarlyWarningCenter.tsx', {
     'react-router-dom': router, '../ui/Card': Card, '../ui/Spinner': Spinner,
     '../../lib/mentorAlerts': { MENTOR_PRIORITY_ORDER: { critical: 0, high: 1, medium: 2, low: 3 } },
+    '../../lib/teacherOverview': moduleAt('src/lib/teacherOverview.ts'),
   }).default
-  const html = render(Center, { students: [{ id: 'a', username: 'Yetersiz veri', alerts: { priority: 'low', alerts: [] } }], loading: false, error: null })
-  assert.match(html, /dikkat gerektiren bir uyarı yok/)
+  const html = render(Center, { students: [{ id: 'a', username: 'Yetersiz veri', alerts: { priority: 'low', alerts: [] }, status: { hasEnoughData: false, metrics: { nextMeetingAt: null } } }], loading: false, error: null })
+  assert.match(html, /Veri birikiyor/)
   assert.doesNotMatch(html, /<article|Kritik|Yetersiz veri/)
 })
 test('neutral student status retains its neutral visual treatment', () => {
@@ -174,7 +175,7 @@ test('AI freshness, stale refresh and transparency are visible without backend d
   assert.match(markup(panel.tree()), /Güncel/)
   const stale = markup(panel.tree({ currentFingerprint: 'changed' }))
   assert.match(stale, /Yeni öğrenci verileri var\./)
-  assert.match(stale, /Yorumu Yenile/)
+  assert.match(stale, /Haftalık AI Değerlendirmesi/)
   assert.doesNotMatch(stale, />Güncel</)
   assert.match(stale, /Bu yorum öğrencinin hedef, performans, görev, konu yeterliliği ve aktif uyarı verilerine dayanır\./)
   assert.doesNotMatch(markup(panel.tree({ currentFingerprint: null })), />Güncel</)

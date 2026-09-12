@@ -22,7 +22,7 @@ const itemStatusLabel: Record<MeetingActionItem['status'], string> = {
 }
 
 export default function MeetingOutcomePanel({ meeting, items, isTeacher, loading, onSaveSummary, onCreateItem, onUpdateItemStatus }: Props) {
-  const [summary, setSummary] = useState(meeting.outcome_summary ?? '')
+  const [summary, setSummary] = useState(meeting.private_note ?? '')
   const [itemText, setItemText] = useState('')
   const [kind, setKind] = useState<MeetingActionItem['kind']>('action')
   const [dueDate, setDueDate] = useState('')
@@ -30,7 +30,7 @@ export default function MeetingOutcomePanel({ meeting, items, isTeacher, loading
   const [addingItem, setAddingItem] = useState(false)
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null)
 
-  useEffect(() => setSummary(meeting.outcome_summary ?? ''), [meeting.outcome_summary])
+  useEffect(() => setSummary(meeting.private_note ?? ''), [meeting.id, meeting.private_note])
 
   async function saveSummary() {
     setSavingSummary(true)
@@ -79,9 +79,9 @@ export default function MeetingOutcomePanel({ meeting, items, isTeacher, loading
     <section className="mt-3 rounded-xl border border-indigo-100 bg-white p-4" aria-label="Görüşme sonucu">
       <h5 className="font-bold text-gray-800">Görüşme Sonucu</h5>
 
-      {isTeacher ? (
+      {isTeacher && (
         <div className="mt-3">
-          <label htmlFor={`meeting-summary-${meeting.id}`} className="text-xs font-bold uppercase tracking-wider text-gray-500">Kısa görüşme özeti</label>
+          <label htmlFor={`meeting-summary-${meeting.id}`} className="text-xs font-bold uppercase tracking-wider text-gray-500">Özel değerlendirme — yalnız öğretmen görebilir</label>
           <textarea id={`meeting-summary-${meeting.id}`}
             value={summary}
             onChange={event => setSummary(event.target.value)}
@@ -94,10 +94,6 @@ export default function MeetingOutcomePanel({ meeting, items, isTeacher, loading
             Özeti Kaydet
           </Button>
         </div>
-      ) : meeting.outcome_summary ? (
-        <p className="mt-2 rounded-lg bg-gray-50 p-3 text-sm leading-relaxed text-gray-700">{meeting.outcome_summary}</p>
-      ) : (
-        <p className="mt-2 text-sm text-gray-400">Henüz görüşme özeti eklenmemiş.</p>
       )}
 
       <div className="mt-5">

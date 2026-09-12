@@ -20,6 +20,8 @@ export default function TeacherDashboard() {
   const [copied, setCopied] = useState(false)
   const [isRefreshingCode, setIsRefreshingCode] = useState(false)
   const [showGoalForm, setShowGoalForm] = useState(false)
+  const [mobileDetail, setMobileDetail] = useState(false)
+  function selectStudent(id: string) { setSelectedStudent(id); setMobileDetail(true) }
 
   useEffect(() => {
     if (students.length === 0) {
@@ -107,7 +109,7 @@ export default function TeacherDashboard() {
         students={students}
         loading={studentsLoading}
         error={studentsError}
-        onSelectStudent={setSelectedStudent}
+        onSelectStudent={selectStudent}
         onRetry={() => void reload()}
       />
 
@@ -123,7 +125,7 @@ export default function TeacherDashboard() {
               {students.filter(student => student.status.metrics.nextMeetingAt)
                 .sort((a, b) => new Date(a.status.metrics.nextMeetingAt!).getTime() - new Date(b.status.metrics.nextMeetingAt!).getTime())
                 .slice(0, 3).map(student => <li key={student.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                  <button type="button" onClick={() => setSelectedStudent(student.id)} className="font-semibold text-indigo-700">{student.username}</button>
+                  <button type="button" onClick={() => selectStudent(student.id)} className="font-semibold text-indigo-700">{student.username}</button>
                   <time dateTime={student.status.metrics.nextMeetingAt!} className="tabular-nums text-slate-600">{new Date(student.status.metrics.nextMeetingAt!).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })}</time>
                 </li>)}
             </ul>
@@ -132,11 +134,11 @@ export default function TeacherDashboard() {
 
       <div className="grid min-w-0 grid-cols-1 xl:grid-cols-3 gap-5">
         {/* Sol Kolon: Öğrenci Listesi */}
-        <div className="min-w-0 xl:col-span-1 space-y-5">
+        <div className={`min-w-0 xl:col-span-1 space-y-5 ${mobileDetail ? 'hidden xl:block' : ''}`}>
           <StudentList 
             students={students} 
             selectedStudent={selectedStudent} 
-            onSelectStudent={setSelectedStudent}
+            onSelectStudent={selectStudent}
             loading={studentsLoading}
             error={studentsError}
             onRetry={() => void reload()}
@@ -148,7 +150,8 @@ export default function TeacherDashboard() {
         </div>
 
         {/* Sağ Kolon: Öğrenci Detayları */}
-        <div className="min-w-0 xl:col-span-2">
+        <div className={`min-w-0 xl:col-span-2 ${!mobileDetail ? 'hidden xl:block' : ''}`}>
+          <button type="button" onClick={() => setMobileDetail(false)} className="mb-3 min-h-11 rounded-lg px-3 text-indigo-700 xl:hidden">← Öğrenci listesine dön</button>
           {selectedStudent ? (
             <div className="space-y-6">
               <Card className="border-t-4 border-t-indigo-500">

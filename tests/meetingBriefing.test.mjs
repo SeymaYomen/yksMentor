@@ -3,12 +3,9 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import ts from 'typescript'
 
-const source = readFileSync(new URL('../src/lib/meetingBriefing.ts', import.meta.url), 'utf8')
-const compiled = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-})
-const briefingModule = { exports: {} }
-new Function('exports', 'module', compiled.outputText)(briefingModule.exports, briefingModule)
+import { loadTs } from './loadTs.mjs'
+const briefingModule = { exports: loadTs('src/lib/meetingBriefing.ts') }
+
 const { buildMeetingBriefing } = briefingModule.exports
 
 const now = new Date('2026-08-31T12:00:00+03:00')
@@ -56,7 +53,9 @@ test('ilk görüşmede yakın dönem kullanılır ve eksik veri sahte değişim 
   const result = build({ performance: [{ date: '2026-08-28', tyt_net: 62, daily_hours: 3 }] })
 
   assert.equal(result.period.isFirstMeeting, true)
-  assert.equal(result.performance.tyt.hasData, false)
+  assert.equal(result.performance.tyt.hasData, true)
+  assert.equal(result.performance.tyt.current, 62)
+  assert.equal(result.performance.tyt.delta, null)
   assert.equal(result.warnings.length, 0)
 })
 
@@ -74,10 +73,10 @@ test('önceki görüşmeden sonraki performans değişimini hesaplar', () => {
   })
 
   assert.equal(result.period.previousMeetingId, 'previous')
-  assert.equal(result.performance.tyt.delta, 5.25)
-  assert.equal(result.performance.ayt.delta, 2.75)
-  assert.equal(result.performance.weeklyStudyHours.previous, 17.5)
-  assert.equal(result.performance.weeklyStudyHours.current, 28)
+  assert.equal(result.performance.tyt.delta, 1.5)
+  assert.equal(result.performance.ayt.delta, 0.75)
+  assert.equal(result.performance.weeklyStudyHours.previous, 5)
+  assert.equal(result.performance.weeklyStudyHours.current, 8)
 })
 
 test('açık görüşme kararını sonraki brifingde gösterir', () => {

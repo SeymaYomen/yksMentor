@@ -3,6 +3,8 @@ export type CompetencyStatus = 'strong' | 'developing' | 'weak' | 'insufficient_
 export type CompetencyTrend = 'improving' | 'stable' | 'declining' | 'insufficient_data'
 
 export type TopicPerformanceSignal = {
+  evidenceKind?: 'assessment_topic_error' | 'practice_topic'
+  assessmentEventId?: string
   topicId: string
   topicName: string
   topicIsActive: boolean
@@ -83,6 +85,7 @@ function validCount(value: number | null) {
 
 function normalizedRows(rows: TopicPerformanceSignal[], limit: number) {
   return [...rows]
+    .filter(row => row.evidenceKind !== 'practice_topic')
     .filter(row => {
       const counts = [row.correctCount, row.wrongCount, row.blankCount]
       if (!counts.some(validCount)) return false
@@ -145,6 +148,19 @@ export function calculateTopicCompetency({
   }
 
   const reference = topicPerformances[topicPerformances.length - 1]
+  if (topicPerformances.some(row => row.evidenceKind)) {
+    const events = new Map(topicPerformances.filter(row => row.evidenceKind === 'assessment_topic_error' && row.assessmentEventId &&
+      (row.wrongCount ?? 0) + (row.blankCount ?? 0) > 0).map(row => [row.assessmentEventId, row]))
+    const errors = [...events.values()].sort((a, b) => timestamp(a.observedAt) - timestamp(b.observedAt)).slice(-recentWindow)
+    const repeated = errors.length >= 2
+    return { topicId: reference.topicId, topicName: reference.topicName, topicIsActive: reference.topicIsActive,
+      subjectId: reference.subjectId, subjectName: reference.subjectName, examType: reference.examType,
+      status: repeated ? 'weak' : 'insufficient_data', score: null, trend: 'insufficient_data',
+      evidence: { attempts: errors.length, correct: 0, wrong: errors.reduce((sum, row) => sum + (row.wrongCount ?? 0), 0),
+        blank: errors.reduce((sum, row) => sum + (row.blankCount ?? 0), 0), knownQuestions: 0, recentAccuracy: null },
+      reasons: [repeated ? 'En az iki farklı denemede bu konu için yanlış/boş etiketi var; dikkat gerektiriyor.'
+        : errors.length ? 'Sınırlı değerlendirme kanıtı: tek denemede konu hatası etiketlendi.' : 'Yakın zamanda çalışıldı; çalışma kaydı konu yeterliliği kanıtı değildir.'] }
+  }
   const rows = normalizedRows(topicPerformances, recentWindow)
   const correct = rows.reduce((sum, row) => sum + (row.correctCount ?? 0), 0)
   const wrong = rows.reduce((sum, row) => sum + (row.wrongCount ?? 0), 0)

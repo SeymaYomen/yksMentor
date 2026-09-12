@@ -58,7 +58,7 @@ test('context builder teknik kimlikleri ve gereksiz kişisel veriyi dışarıda 
 
   assert.equal(context.student.displayName, 'Ayşe')
   assert.doesNotMatch(serialized, /SECRET-|private@example\.com|studentId|topicId|subjectId|created_by|join_code/i)
-  assert.deepEqual(Object.keys(context), ['student', 'status', 'goalProgress', 'competencySummary', 'alerts', 'tasks', 'meetings', 'recentChanges'])
+  assert.deepEqual(Object.keys(context), ['student', 'weeklySnapshot', 'status', 'goalProgress', 'competencySummary', 'alerts', 'tasks', 'meetings', 'recentChanges'])
 })
 
 test('low-risk context ve prompt aşırı alarm dilini açıkça engeller', () => {

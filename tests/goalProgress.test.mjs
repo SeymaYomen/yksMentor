@@ -3,12 +3,9 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import ts from 'typescript'
 
-const source = readFileSync(new URL('../src/lib/goalProgress.ts', import.meta.url), 'utf8')
-const compiled = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-})
-const goalModule = { exports: {} }
-new Function('exports', 'module', compiled.outputText)(goalModule.exports, goalModule)
+import { loadTs } from './loadTs.mjs'
+const goalModule = { exports: loadTs('src/lib/goalProgress.ts') }
+
 const { calculateGoalProgress, validateGoalInput } = goalModule.exports
 
 const now = new Date('2026-08-31T12:00:00+03:00')

@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { validateMockExam, mergeAssessmentHistory, type MockExam, type MockExamInput } from './mockExams'
-import type { AcademicCatalog } from './academicData'
+import { loadAcademicCatalog, type AcademicCatalog } from './academicData'
 import type { StudyPerformanceRow } from './studySessions'
 
 function client() {
@@ -44,7 +44,8 @@ export async function loadAssessmentData(studentIds: string[]) {
     pages<StudyPerformanceRow>((from, to) => client().from('performance')
       .select('id, student_id, daily_hours, tyt_net, ayt_net, date, created_at').in('student_id', studentIds).order('id').range(from, to)),
   ])
-  return { exams, performance: mergeAssessmentHistory(legacy, exams) }
+  const catalog = exams.length ? await loadAcademicCatalog(true) : undefined
+  return { exams, performance: mergeAssessmentHistory(legacy, exams, catalog) }
 }
 
 export async function saveMockExam(input: MockExamInput, catalog: AcademicCatalog, examId: string | null = null): Promise<string> {

@@ -3,11 +3,12 @@ import { filterGoalSuggestions, nextGoalOption } from '../../lib/goalSuggestions
 import { GOAL_FIELD_LIMITS } from '../../lib/goalProgress'
 import Input from '../ui/Input'
 
-export default function GoalAutocomplete({ label, value, onChange, options }: {
+export default function GoalAutocomplete({ label, value, onChange, options, onSelected }: {
   label: string
   value: string
   onChange: (value: string) => void
   options: readonly string[]
+  onSelected?: (selected: boolean) => void
 }) {
   const id = useId()
   const [open, setOpen] = useState(false)
@@ -17,6 +18,7 @@ export default function GoalAutocomplete({ label, value, onChange, options }: {
 
   function select(option: string) {
     onChange(option)
+    onSelected?.(true)
     setOpen(false)
     setActive(-1)
   }
@@ -29,7 +31,7 @@ export default function GoalAutocomplete({ label, value, onChange, options }: {
         aria-activedescendant={expanded && active >= 0 ? `${id}-option-${active}` : undefined}
         maxLength={GOAL_FIELD_LIMITS.textLength.max} value={value}
         onFocus={() => setOpen(true)} onBlur={() => { setOpen(false); setActive(-1) }}
-        onChange={event => { onChange(event.target.value); setOpen(true); setActive(-1) }}
+        onChange={event => { onChange(event.target.value); onSelected?.(!event.target.value.trim()); setOpen(true); setActive(-1) }}
         onKeyDown={event => {
           if (event.nativeEvent.isComposing) return
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {

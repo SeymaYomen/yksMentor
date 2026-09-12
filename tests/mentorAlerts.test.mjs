@@ -17,7 +17,7 @@ function compile(sourcePath, requireImpl = () => ({})) {
 
 const statusModule = compile('../src/lib/studentStatus.ts')
 const alertsModule = compile('../src/lib/mentorAlerts.ts', id => {
-  if (id === './studentStatus') return statusModule
+  if (id === './studentStatus.ts') return statusModule
   return {}
 })
 const { calculateMentorAlerts } = alertsModule

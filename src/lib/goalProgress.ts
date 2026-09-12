@@ -1,4 +1,5 @@
 import type { StudentStatusResult } from './studentStatus'
+import { UNIVERSITY_SUGGESTIONS, PROGRAM_SUGGESTIONS } from './goalSuggestions.ts'
 
 export type GoalType = 'university_program' | 'rank' | 'score' | 'net'
 export type GoalScoreType = 'sayisal' | 'esit_agirlik' | 'sozel' | 'dil' | 'tyt'
@@ -103,6 +104,8 @@ export function validateGoalInput(input: GoalSaveInput) {
   const errors: string[] = []
   const universityName = input.universityName?.trim() || null
   const programName = input.programName?.trim() || null
+  if (universityName && !(UNIVERSITY_SUGGESTIONS as readonly string[]).includes(universityName)) errors.push('Üniversiteyi öneri listesinden seçin veya alanı boş bırakın.')
+  if (programName && !(PROGRAM_SUGGESTIONS as readonly string[]).includes(programName)) errors.push('Bölümü öneri listesinden seçin veya alanı boş bırakın.')
   const numericFields: Array<[string, number | null | undefined, number, number | undefined]> = [
     ['TYT net hedefi', input.targetTytNet, GOAL_FIELD_LIMITS.tytNet.min, GOAL_FIELD_LIMITS.tytNet.max],
     ['AYT net hedefi', input.targetAytNet, GOAL_FIELD_LIMITS.aytNet.min, GOAL_FIELD_LIMITS.aytNet.max],

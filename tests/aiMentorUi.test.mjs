@@ -8,7 +8,7 @@ const mentorSummary = readFileSync(new URL('../src/components/teacher/MentorSumm
 test('AI çağrısı yalnız mentor butonuyla başlatılır', () => {
   assert.doesNotMatch(insightPanel, /useEffect/)
   assert.match(insightPanel, /onClick=\{\(\) => void generateInsight\(\)\}/)
-  assert.match(insightPanel, /Yorum Oluştur/)
+  assert.match(insightPanel, /Haftalık AI Değerlendirmesi/)
 })
 
 test('AI başarısızlığı mevcut mentor özetini ve domain çıktılarını bozmaz', () => {

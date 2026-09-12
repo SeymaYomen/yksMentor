@@ -41,7 +41,7 @@ function groupByStudent<T extends { student_id: string }>(rows: T[]) {
   }, {})
 }
 
-async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStudentSummary[]> {
+export async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStudentSummary[]> {
   if (!isSupabaseConfigured || !supabase) {
     throw new Error('Supabase yapılandırılmamış. .env dosyanızı kontrol edin.')
   }
@@ -64,7 +64,7 @@ async function loadMentorStudentSummaries(teacherId: string): Promise<MentorStud
     loadStudyPerformance(studentIds),
     supabase
       .from('tasks')
-      .select('student_id, status, due_date')
+      .select('student_id, status, due_date, created_at')
       .in('student_id', studentIds),
     supabase
       .from('meetings')

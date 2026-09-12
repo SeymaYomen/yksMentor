@@ -5,6 +5,8 @@ import Button from '../../components/ui/Button'
 import { useAuth } from '../../hooks/useAuth'
 import type { UserRole } from '../../hooks/useAuth'
 import { showSuccess, showError } from '../../components/ui/ToastButton'
+import { authMessage } from '../../lib/authMessages'
+import { supabase } from '../../lib/supabase'
 
 export default function Register() {
   const [username, setUsername] = useState('')
@@ -14,6 +16,8 @@ export default function Register() {
   const [teacherInviteCode, setTeacherInviteCode] = useState('')
   const [role, setRole] = useState<UserRole>('student')
   const [loading, setLoading] = useState(false)
+  const [confirmation, setConfirmation] = useState<{ email: string; teacher: boolean; mentor: boolean } | null>(null)
+  const [resent, setResent] = useState(false)
   const navigate = useNavigate()
   const auth = useAuth()
 
@@ -49,21 +53,13 @@ export default function Register() {
     setLoading(false)
 
     if (result.requiresEmailConfirmation) {
-      if (result.requiresTeacherInviteReentry) {
-        showSuccess('Kayıt oluşturuldu. E-postanızı onaylayıp giriş yaptıktan sonra öğretmen davet kodunu yeniden girin.')
-        navigate('/login?teacherInvite=required')
-      } else if (mentorJoinCode.trim()) {
-        showSuccess('Kayıt oluşturuldu. E-postanızı onaylayıp giriş yaptıktan sonra mentor katılım kodunu öğrenci panelinden yeniden girin.')
-        navigate('/login')
-      } else {
-        showSuccess('Kayıt başarılı! E-posta adresinizi onayladıktan sonra giriş yapabilirsiniz.')
-        navigate('/login')
-      }
+      setConfirmation({ email: email.trim(), teacher: !!result.requiresTeacherInviteReentry, mentor: !!mentorJoinCode.trim() })
+      setPassword('')
       return
     }
 
     if (result.error) {
-      showError('Kayıt tamamlanamadı: ' + result.error.message)
+      showError(authMessage(result.error))
       return
     }
     if (!result.user) {
@@ -75,6 +71,24 @@ export default function Register() {
     showSuccess('Hoş geldiniz! Hesabınız oluşturuldu.')
     navigate(result.user.role === 'teacher' ? '/teacher' : '/student', { replace: true })
   }
+
+  if (confirmation) return <section role="status" className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
+    <h2 className="text-xl font-bold">Hesabın oluşturuldu.</h2>
+    <p>Devam etmek için e-posta adresini doğrula.</p>
+    <p>{confirmation.email} adresindeki gelen kutunu ve spam klasörünü kontrol et.</p>
+    {confirmation.teacher && <p>Doğrulama sonrası giriş yaptığında öğretmen davet kodunu yeniden gir.</p>}
+    {confirmation.mentor && <p>Doğrulama sonrası mentor katılım kodunu öğrenci panelinden yeniden gir.</p>}
+    <Button type="button" loading={loading} disabled={resent} onClick={async () => {
+      if (!supabase || loading || resent) return
+      setLoading(true)
+      try {
+        const { error } = await supabase.auth.resend({ type: 'signup', email: confirmation.email })
+        if (error) showError(authMessage(error))
+        else { setResent(true); showSuccess('Doğrulama e-postası tekrar gönderildi.') }
+      } catch (error) { showError(authMessage(error)) } finally { setLoading(false) }
+    }}>{resent ? 'Doğrulama e-postası gönderildi' : 'Doğrulama e-postasını tekrar gönder'}</Button>
+    <Link className="block font-semibold text-indigo-700" to={confirmation.teacher ? '/login?teacherInvite=required' : '/login'}>Doğruladım, giriş yap</Link>
+  </section>
 
   return (
     <div>

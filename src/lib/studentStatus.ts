@@ -10,6 +10,7 @@ export type PerformanceSignal = {
 }
 
 export type TaskSignal = {
+  created_at?: string | null
   status?: boolean | null
   due_date?: string | null
 }
@@ -34,6 +35,8 @@ export type MetricComparison = {
 }
 
 export type StudentStatusMetrics = {
+  weeklyStudy?: ReturnType<typeof weeklyStudyComparison>
+  weeklyTasks?: { assigned: number; completed: number; completionRate: number | null }
   taskCompletionRate: number | null
   totalTasks: number
   evaluatedTasks: number
@@ -108,12 +111,11 @@ function compareMetric(
     .slice(-STUDENT_STATUS_RULES.comparisonRecordLimit)
 
   if (values.length < 2) {
-    return { previous: null, current: null, delta: null, trend: 'insufficient' }
+    return { previous: null, current: values[0] ?? null, delta: null, trend: 'insufficient' }
   }
 
-  const splitIndex = Math.floor(values.length / 2)
-  const previous = average(values.slice(0, splitIndex))
-  const current = average(values.slice(splitIndex))
+  const previous = values[values.length - 2]
+  const current = values[values.length - 1]
   const delta = current - previous
   const trend = delta >= positiveThreshold(previous)
     ? 'up'
@@ -122,11 +124,36 @@ function compareMetric(
       : 'stable'
 
   return {
-    previous: round(previous),
-    current: round(current),
-    delta: round(delta),
+    previous: round(previous, 2),
+    current: round(current, 2),
+    delta: round(delta, 2),
     trend,
   }
+}
+
+// Equal rolling seven-day windows; missing days never become observations.
+export function weeklyStudyComparison(records: PerformanceSignal[], now: Date) {
+  const dayKey = (date: Date) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Istanbul' }).format(date)
+  const end = dayKey(now)
+  const boundary = (days: number) => dayKey(new Date(now.getTime() - days * 86_400_000))
+  const middle = boundary(7)
+  const start = boundary(14)
+  const days = new Map<string, number>()
+  for (const row of records) {
+    const day = (row.date || row.created_at || '').slice(0, 10)
+    if (day > start && day <= end && typeof row.daily_hours === 'number' && Number.isFinite(row.daily_hours) && row.daily_hours >= 0) {
+      days.set(day, (days.get(day) ?? 0) + row.daily_hours)
+    }
+  }
+  const previousDays = [...days].filter(([day]) => day <= middle)
+  const currentDays = [...days].filter(([day]) => day > middle)
+  const sum = (entries: Array<[string, number]>) => entries.length ? round(entries.reduce((sum, [, hours]) => sum + hours, 0), 2) : null
+  const previous = sum(previousDays)
+  const current = sum(currentDays)
+  const comparable = previousDays.length >= 2 && currentDays.length >= 2
+  return { previous, current, delta: comparable ? round(current! - previous!, 2) : null,
+    hasData: current !== null, comparable, previousDays: previousDays.length, currentDays: currentDays.length,
+    start, middle, end }
 }
 
 function combinePerformanceTrend(tyt: MetricComparison, ayt: MetricComparison): TrendDirection {
@@ -169,15 +196,18 @@ export function calculateStudentStatus(input: StudentStatusInput): StudentStatus
   const now = input.now ?? new Date()
   const tyt = compareMetric(input.performance, 'tyt_net', () => STUDENT_STATUS_RULES.tytNetChange)
   const ayt = compareMetric(input.performance, 'ayt_net', () => STUDENT_STATUS_RULES.aytNetChange)
-  const studyHours = compareMetric(
-    input.performance,
-    'daily_hours',
-    () => STUDENT_STATUS_RULES.studyHoursAbsoluteChange,
-    previous => Math.max(
-      STUDENT_STATUS_RULES.studyHoursAbsoluteChange,
-      previous * STUDENT_STATUS_RULES.studyHoursRelativeDecline,
-    ),
-  )
+  const weeklyStudy = weeklyStudyComparison(input.performance, now)
+  const weeklyTasks = input.tasks.filter(task => {
+    const day = task.created_at?.slice(0, 10)
+    return day && day > weeklyStudy.middle && day <= weeklyStudy.end
+  })
+  const weeklyCompleted = weeklyTasks.filter(task => task.status === true).length
+  const previousStudy = weeklyStudy.previous === null ? null : weeklyStudy.previous / weeklyStudy.previousDays
+  const currentStudy = weeklyStudy.current === null ? null : weeklyStudy.current / weeklyStudy.currentDays
+  const studyDelta = weeklyStudy.comparable ? currentStudy! - previousStudy! : null
+  const studyHours: MetricComparison = { previous: previousStudy, current: currentStudy, delta: studyDelta,
+    trend: studyDelta === null ? 'insufficient' : studyDelta >= STUDENT_STATUS_RULES.studyHoursAbsoluteChange ? 'up'
+      : studyDelta <= -Math.max(STUDENT_STATUS_RULES.studyHoursAbsoluteChange, previousStudy! * STUDENT_STATUS_RULES.studyHoursRelativeDecline) ? 'down' : 'stable' }
   const performanceTrend = combinePerformanceTrend(tyt, ayt)
 
   const totalTasks = input.tasks.length
@@ -282,6 +312,9 @@ export function calculateStudentStatus(input: StudentStatusInput): StudentStatus
     positives,
     hasEnoughData,
     metrics: {
+      weeklyStudy,
+      weeklyTasks: { assigned: weeklyTasks.length, completed: weeklyCompleted,
+        completionRate: weeklyTasks.length ? round(weeklyCompleted / weeklyTasks.length * 100, 0) : null },
       taskCompletionRate,
       totalTasks,
       evaluatedTasks,

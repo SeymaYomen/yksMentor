@@ -39,6 +39,8 @@ function inferGoalType(values: {
 export default function GoalForm({ studentId, goal, onSaved, onCancel }: Props) {
   const [universityName, setUniversityName] = useState('')
   const [programName, setProgramName] = useState('')
+  const [universitySelected, setUniversitySelected] = useState(false)
+  const [programSelected, setProgramSelected] = useState(false)
   const [scoreType, setScoreType] = useState<GoalScoreType | ''>('')
   const [targetRank, setTargetRank] = useState('')
   const [targetScore, setTargetScore] = useState('')
@@ -51,6 +53,8 @@ export default function GoalForm({ studentId, goal, onSaved, onCancel }: Props) 
   useEffect(() => {
     setUniversityName(goal?.university_name ?? '')
     setProgramName(goal?.program_name ?? '')
+    setUniversitySelected(!goal?.university_name || (UNIVERSITY_SUGGESTIONS as readonly string[]).includes(goal.university_name))
+    setProgramSelected(!goal?.program_name || (PROGRAM_SUGGESTIONS as readonly string[]).includes(goal.program_name))
     setScoreType(goal?.score_type ?? '')
     setTargetRank(goal?.target_rank?.toString() ?? '')
     setTargetScore(goal?.target_score?.toString() ?? '')
@@ -62,6 +66,11 @@ export default function GoalForm({ studentId, goal, onSaved, onCancel }: Props) 
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    if (submitting) return
+    if ((universityName.trim() && !universitySelected) || (programName.trim() && !programSelected)) {
+      setError('Üniversite ve bölüm için öneri listesinden seçim yapın veya alanı boş bırakın.')
+      return
+    }
     const input: GoalSaveInput = {
       goalType: inferGoalType({ universityName, programName, targetRank, targetScore }),
       scoreType: scoreType || null,
@@ -114,8 +123,8 @@ export default function GoalForm({ studentId, goal, onSaved, onCancel }: Props) 
       <fieldset className="min-w-0 space-y-3">
         <legend className="text-sm font-bold text-slate-900">Eğitim hedefi</legend>
         <div className="grid gap-3 sm:grid-cols-2">
-          <GoalAutocomplete label="Üniversite" value={universityName} onChange={setUniversityName} options={UNIVERSITY_SUGGESTIONS} />
-          <GoalAutocomplete label="Bölüm" value={programName} onChange={setProgramName} options={PROGRAM_SUGGESTIONS} />
+          <GoalAutocomplete label="Üniversite (isteğe bağlı)" value={universityName} onChange={setUniversityName} onSelected={setUniversitySelected} options={UNIVERSITY_SUGGESTIONS} />
+          <GoalAutocomplete label="Bölüm (isteğe bağlı)" value={programName} onChange={setProgramName} onSelected={setProgramSelected} options={PROGRAM_SUGGESTIONS} />
         <label className="text-sm font-semibold text-gray-700">
           Puan türü
           <select className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3" value={scoreType} onChange={event => setScoreType(event.target.value as GoalScoreType | '')}>

@@ -1,5 +1,7 @@
 import { isSupabaseConfigured, supabase } from './supabase'
 import type { ExamType, TopicPerformanceSignal } from './competencyMap'
+import { loadMockExams } from './mockExamData'
+import { mockTopicSignals } from './mockExams'
 
 export type AcademicSubject = {
   id: string
@@ -71,19 +73,20 @@ export async function loadAcademicCatalog(includeInactive = false): Promise<Acad
 export async function loadTopicPerformanceSignals(studentIds: string[]): Promise<StudentTopicPerformanceSignal[]> {
   if (studentIds.length === 0) return []
   const client = requireClient()
-  const [performanceResult, catalog] = await Promise.all([
+  const [performanceResult, catalog, exams] = await Promise.all([
     client
       .from('exam_topic_performance')
       .select('student_id, topic_id, correct_count, wrong_count, blank_count, observed_at, created_at')
       .in('student_id', studentIds),
     loadAcademicCatalog(true),
+    loadMockExams(studentIds),
   ])
   if (performanceResult.error) throw performanceResult.error
 
   const subjectById = new Map(catalog.subjects.map(subject => [subject.id, subject]))
   const topicById = new Map(catalog.topics.map(topic => [topic.id, topic]))
 
-  return ((performanceResult.data ?? []) as TopicPerformanceRow[]).flatMap(row => {
+  const legacy = ((performanceResult.data ?? []) as TopicPerformanceRow[]).flatMap(row => {
     const topic = topicById.get(row.topic_id)
     const subject = topic ? subjectById.get(topic.subject_id) : undefined
     if (!topic || !subject) return []
@@ -101,4 +104,7 @@ export async function loadTopicPerformanceSignals(studentIds: string[]): Promise
       studentId: row.student_id,
     }]
   })
+  const fresh = mockTopicSignals(exams, catalog)
+  const authoritative = new Set(exams.map(exam => `${exam.student_id}/${exam.exam_type}`))
+  return [...legacy.filter(row => !authoritative.has(`${row.studentId}/${row.examType}`)), ...fresh]
 }

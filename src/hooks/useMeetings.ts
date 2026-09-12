@@ -12,7 +12,7 @@ export type Meeting = {
   scheduled_at: string | null
   status: 'scheduled' | 'completed' | 'cancelled'
   created_at: string
-  outcome_summary: string | null
+  private_note?: string | null
   profiles?: { username: string } // related profile (student for teacher, teacher for student)
 }
 
@@ -33,17 +33,29 @@ export function useMeetings(role: UserRole | undefined, userId: string | undefin
     setError(null)
 
     // Fetch meetings
-    let query = supabase.from('meetings').select('*, profiles!meetings_student_id_fkey(username)')
+    const sharedColumns = 'id, teacher_id, student_id, title, description, meeting_url, scheduled_at, status, created_at'
+    let query = supabase.from('meetings').select(`${sharedColumns}, profiles!meetings_student_id_fkey(username)`)
     if (role === 'teacher') {
-      query = supabase.from('meetings').select('*, profiles!meetings_student_id_fkey(username)').eq('teacher_id', userId)
+      query = supabase.from('meetings').select(`${sharedColumns}, profiles!meetings_student_id_fkey(username)`).eq('teacher_id', userId)
     } else {
-      query = supabase.from('meetings').select('*, profiles!meetings_teacher_id_fkey(username)').eq('student_id', userId)
+      query = supabase.from('meetings').select(`${sharedColumns}, profiles!meetings_teacher_id_fkey(username)`).eq('student_id', userId)
     }
 
     const { data, error } = await query.order('scheduled_at', { ascending: true })
 
     if (!error && data) {
-      setMeetings(data as unknown as Meeting[])
+      const rows = data as unknown as Meeting[]
+      if (role === 'teacher') {
+        try {
+          const notes = await Promise.all(rows.map(async meeting => {
+            if (meeting.status !== 'completed') return meeting
+            const result = await supabase!.rpc('read_meeting_private_note', { p_meeting_id: meeting.id })
+            if (result.error) throw result.error
+            return { ...meeting, private_note: result.data as string | null }
+          }))
+          setMeetings(notes)
+        } catch { setError(new Error('Özel görüşme notları yüklenemedi.')); setMeetings([]) }
+      } else setMeetings(rows)
     } else if (error) {
       console.error('Meetings could not be loaded:')
       setError(new Error(error.message))

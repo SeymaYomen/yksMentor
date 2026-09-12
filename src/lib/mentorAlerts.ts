@@ -3,7 +3,7 @@ import {
   type PerformanceSignal,
   type StudentStatusResult,
   type TaskSignal,
-} from './studentStatus'
+} from './studentStatus.ts'
 
 import type {
   GoalMetricProgress,
@@ -388,6 +388,7 @@ function dataGapAlert(input: CalculateMentorAlertsInput, now: Date): MentorAlert
 }
 
 function calculatePriority(alerts: MentorAlert[], status: StudentStatusResult): MentorAttentionPriority {
+  alerts = alerts.filter(alert => alert.type !== 'DATA_GAP')
   if (alerts.length === 0) return 'low'
   const highCount = alerts.filter(alert => alert.severity === 'high').length
   if (highCount >= MENTOR_ALERT_RULES.criticalHighAlertCount) return 'critical'

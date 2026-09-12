@@ -32,7 +32,7 @@ function trendArrow(trend: TrendDirection) {
 
 function comparisonText(comparison: MetricComparison, suffix = '') {
   if (comparison.previous === null || comparison.current === null) {
-    return <span className="text-gray-500">Henüz yeterli veri yok</span>
+    return <span className="text-gray-600">{comparison.current === null ? 'Henüz veri yok.' : <>{formatNumber(comparison.current, suffix)}<small className="block font-normal">{suffix ? 'Karşılaştırma için yeterli çalışma geçmişi yok.' : 'Trend için bir deneme daha gerekli.'}</small></>}</span>
   }
 
   return (

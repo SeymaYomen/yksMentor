@@ -10,9 +10,19 @@ type ContextTopic = {
   status: TopicCompetencyResult['status']
   trend: TopicCompetencyResult['trend']
   accuracy: number | null
+  observations: number
 }
 
 export type AIMentorContext = {
+  weeklySnapshot: {
+    study: StudentStatusResult['metrics']['weeklyStudy'] | null
+    latestTYT: number | null
+    latestAYT: number | null
+    tytGoalGap: number | null
+    aytGoalGap: number | null
+    limitedTopicEvidence: ContextTopic[]
+    assignedTaskCompletion: StudentStatusResult['metrics']['weeklyTasks'] | null
+  }
   student: { displayName: string }
   status: {
     level: StudentStatusResult['level']
@@ -72,6 +82,7 @@ function contextTopic(topic: TopicCompetencyResult): ContextTopic {
     status: topic.status,
     trend: topic.trend,
     accuracy: topic.score,
+    observations: topic.evidence.attempts,
   }
 }
 
@@ -89,6 +100,15 @@ export function buildAIMentorContext(input: BuildAIMentorContextInput): AIMentor
 
   return {
     student: { displayName: safeDisplayName(input.displayName) },
+    weeklySnapshot: {
+      study: metrics.weeklyStudy ?? null,
+      latestTYT: metrics.tyt.current,
+      latestAYT: metrics.ayt.current,
+      tytGoalGap: input.goalProgress.metrics.tyt?.remaining ?? null,
+      aytGoalGap: input.goalProgress.metrics.ayt?.remaining ?? null,
+      limitedTopicEvidence: input.competencyMap.insufficient.slice(0, 3).map(contextTopic),
+      assignedTaskCompletion: metrics.weeklyTasks ?? null,
+    },
     status: {
       level: input.studentStatus.level,
       label: input.studentStatus.label,

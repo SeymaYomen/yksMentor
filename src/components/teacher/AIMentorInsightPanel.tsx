@@ -54,7 +54,7 @@ export default function AIMentorInsightPanel({
           onClick={() => void generateInsight()}
           className="min-h-11 max-w-full rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? 'Mentor yorumu hazırlanıyor...' : result ? 'Yorumu Yenile' : 'Yorum Oluştur'}
+          {loading ? 'Mentor yorumu hazırlanıyor...' : 'Haftalık AI Değerlendirmesi'}
         </button>
       </div>
 

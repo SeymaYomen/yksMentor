@@ -3,16 +3,11 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import ts from 'typescript'
 
-function moduleAt(path) {
-  const source = readFileSync(new URL(path, import.meta.url), 'utf8')
-  const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
-  const mod = { exports: {} }
-  new Function('exports', 'module', output)(mod.exports, mod)
-  return mod.exports
-}
+import { loadTs } from './loadTs.mjs'
+const moduleAt = path => loadTs(new URL(path, import.meta.url))
 const { examNet, examTotal, validateMockExam, mergeAssessmentHistory, examHistory, latestExamSummary, previousExamDelta } = moduleAt('../src/lib/mockExams.ts')
 const { calculateGoalProgress } = moduleAt('../src/lib/goalProgress.ts')
-const catalog = { subjects: [{ id: 't', exam_type: 'TYT' }, { id: 'a', exam_type: 'AYT' }], topics: [{ id: 'topic', subject_id: 't' }] }
+const catalog = { subjects: [{ id: 't', name: 'Matematik', exam_type: 'TYT' }, { id: 'a', name: 'Matematik', exam_type: 'AYT' }], topics: [{ id: 'topic', subject_id: 't' }] }
 const result = (correct = 10, wrong = 4) => ({ subject_id: 't', correct_count: correct, wrong_count: wrong, blank_count: 2 })
 const exam = (overrides = {}) => ({ id: 'e', student_id: 's', exam_type: 'TYT', exam_date: '2026-09-10', created_at: '2026-09-10T12:00:00Z', updated_at: '', name: null, difficulty: null, branch_subject_id: null, subject_results: [result()], topic_errors: [], ...overrides })
 const legacy = [{ id: 'l', student_id: 's', date: '2026-09-11', created_at: null, daily_hours: 2, tyt_net: 80, ayt_net: 40 }]

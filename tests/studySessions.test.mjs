@@ -16,6 +16,7 @@ function load(path, dependencies = {}) {
 const model = load('../src/lib/studySessions.ts')
 function loadService(supabase) {
   const assessment = load('../src/lib/mockExamData.ts', {
+    './academicData': { loadAcademicCatalog: async () => ({ subjects: [], topics: [] }) },
     './supabase': { supabase }, './mockExams': load('../src/lib/mockExams.ts'),
   })
   return load('../src/lib/studySessionData.ts', { './supabase': { supabase }, './studySessions': model, './mockExamData': assessment })
@@ -59,10 +60,10 @@ test('session-only days have null nets, never invented zero scores', () => {
   assert.equal(rows[0].tyt_net, null)
   assert.equal(rows[0].ayt_net, null)
 })
-test('mixed legacy and session days only override the matching student/date', () => {
+test('sessions replace all legacy study hours for that student, without affecting others', () => {
   const rows = mergeStudyHours([legacy(), legacy({ id: 'p2', date: '2026-09-10' }), legacy({ id: 'p3', student_id: 'bob' })], [session({ duration_minutes: 60 })])
   assert.equal(rows.find(row => row.id === 'p1').daily_hours, 1)
-  assert.equal(rows.find(row => row.id === 'p2').daily_hours, 4)
+  assert.equal(rows.find(row => row.id === 'p2').daily_hours, null)
   assert.equal(rows.find(row => row.id === 'p3').daily_hours, 4)
 })
 test('legacy timestamp fallback matches session dates', () => {

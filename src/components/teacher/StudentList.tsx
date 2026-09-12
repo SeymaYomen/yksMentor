@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { filterMentorStudents, type StudentFilter } from '../../lib/teacherOverview'
 import Card from '../ui/Card'
 import Spinner from '../ui/Spinner'
 import type { MentorStudentSummary } from '../../hooks/useMentorStudentSummaries'
@@ -14,6 +15,9 @@ type Props = {
 }
 
 export default function StudentList({ students, selectedStudent, onSelectStudent, loading, error, onRetry }: Props) {
+  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<StudentFilter>('all')
+  const visible = filterMentorStudents(students, query, filter)
   if (loading) {
     return (
       <Card className="flex items-center justify-center">
@@ -52,9 +56,15 @@ export default function StudentList({ students, selectedStudent, onSelectStudent
     <Card className="!p-0 overflow-hidden">
       <div className="px-4 py-3 border-b bg-gray-50/50">
         <h3 className="font-semibold text-gray-700">Öğrencileriniz</h3>
+        <input type="search" aria-label="Öğrenci ara" placeholder="Öğrenci ara" value={query} onChange={event => setQuery(event.target.value)} className="mt-3 min-h-11 w-full rounded-lg border px-3 text-sm" />
+        <div className="mt-2 flex flex-wrap gap-1" aria-label="Öğrenci filtreleri">
+          {([['all', 'Tümü'], ['attention', 'Dikkat gereken'], ['meeting', 'Görüşmesi yaklaşan']] as const).map(([value, label]) =>
+            <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`min-h-11 rounded-lg px-2 text-xs ${filter === value ? 'bg-indigo-100 text-indigo-800' : 'text-gray-600'}`}>{label}</button>)}
+        </div>
       </div>
       <div className="divide-y max-h-[500px] overflow-y-auto">
-        {students.map(s => (
+        {!visible.length && <p className="p-4 text-sm text-gray-500">Aramaya uygun öğrenci yok.</p>}
+        {visible.map(s => (
           <button
             key={s.id}
             type="button"
@@ -78,7 +88,7 @@ export default function StudentList({ students, selectedStudent, onSelectStudent
                   </div>
                   <StudentStatusBadge status={s.status} />
                 </div>
-                <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">{s.status.reasons[0]}</p>
+                <p className="mt-1 truncate text-xs text-gray-500">{s.status.reasons[0]}</p>
               </div>
             </div>
           </button>

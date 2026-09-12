@@ -9,6 +9,7 @@ import { calculateStudentStatus, type MeetingSignal, type PerformanceSignal, typ
 import { AIMentorServiceError, type AIMentorErrorCode } from '../../../src/lib/aiMentorErrors.ts'
 import { loadAIMentorConfig } from '../_shared/aiMentorConfig.ts'
 import { AIMentorProviderError, createOpenAIMentorProvider } from '../_shared/aiMentorProvider.ts'
+import { loadMentorProgressData } from '../_shared/mentorProgressData.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -144,8 +145,8 @@ Deno.serve(async request => {
     usageId = claim.usage_id
     const studentId = studentProfile.id
     const [performanceResult, taskResult, meetingResult, goalResult, actionItemResult, topicPerformanceResult, subjectResult, topicResult] = await Promise.all([
-      supabase.from('performance').select('student_id, daily_hours, tyt_net, ayt_net, date, created_at').eq('student_id', studentId),
-      supabase.from('tasks').select('student_id, status, due_date').eq('student_id', studentId),
+      loadMentorProgressData(supabase, studentId).then(data => ({ data, error: null })).catch(() => ({ data: null, error: 'CONTEXT_LOAD_FAILED' })),
+      supabase.from('tasks').select('student_id, status, due_date, created_at').eq('student_id', studentId),
       supabase.from('meetings').select('student_id, status, scheduled_at').eq('student_id', studentId),
       supabase.from('student_goals').select('*').eq('student_id', studentId).eq('is_active', true).maybeSingle(),
       supabase.from('meeting_action_items').select('*').eq('student_id', studentId),
@@ -158,7 +159,8 @@ Deno.serve(async request => {
       .find(result => result.error)
     if (failedResult?.error) throw new AIMentorServiceError('CONTEXT_LOAD_FAILED')
 
-    const performance = (performanceResult.data ?? []) as PerformanceRow[]
+    if (!performanceResult.data) throw new AIMentorServiceError('CONTEXT_LOAD_FAILED')
+    const performance = performanceResult.data.performance
     const tasks = (taskResult.data ?? []) as TaskRow[]
     const meetings = (meetingResult.data ?? []) as MeetingRow[]
     const actionItems = (actionItemResult.data ?? []) as MeetingActionItem[]
@@ -183,7 +185,11 @@ Deno.serve(async request => {
     })
     const now = new Date()
     const studentStatus = calculateStudentStatus({ performance, tasks, meetings, now })
-    const competencyMap = calculateCompetencyMap(topicPerformance)
+    const authoritativeTypes = new Set(performanceResult.data.exams.map(exam => exam.exam_type))
+    const competencyMap = calculateCompetencyMap([
+      ...topicPerformance.filter(row => !authoritativeTypes.has(row.examType)),
+      ...performanceResult.data.topicSignals,
+    ])
     const goalProgress = calculateGoalProgress({
       goal: (goalResult.data as StudentGoal | null) ?? null,
       performance,
