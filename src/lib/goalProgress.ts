@@ -168,18 +168,33 @@ function calculateMetric(
   key: 'tyt_net' | 'ayt_net',
   now: Date,
 ): GoalMetricProgress {
-  if (target === null) return emptyMetric(null)
-
   const values = performance
     .map(row => ({ value: row[key], time: rowTimestamp(row) }))
     .filter((entry): entry is { value: number; time: number } => (
-      typeof entry.value === 'number' && Number.isFinite(entry.value) && entry.time !== null && entry.time <= now.getTime()
+      typeof entry.value === 'number' &&
+      Number.isFinite(entry.value) &&
+      entry.time !== null &&
+      entry.time <= now.getTime()
     ))
     .sort((a, b) => a.time - b.time)
 
   if (values.length === 0) return emptyMetric(target)
 
   const current = values[values.length - 1].value
+
+  if (target === null) {
+    return {
+      target: null,
+      current,
+      remaining: null,
+      initialRemaining: null,
+      change30Days: null,
+      status: 'insufficient_data',
+      reached: false,
+      hasTrendData: false,
+    }
+  }
+
   const remaining = Math.max(0, round(target - current))
   const reached = current >= target
   const windowStart = now.getTime() - GOAL_PROGRESS_RULES.trendWindowDays * 86_400_000
@@ -201,6 +216,7 @@ function calculateMetric(
   const first = recentValues[0].value
   const last = recentValues[recentValues.length - 1].value
   const change = round(last - first)
+
   const status: GoalProgressStatus = reached
     ? 'achieved'
     : change >= GOAL_PROGRESS_RULES.meaningfulNetChange
@@ -220,7 +236,6 @@ function calculateMetric(
     hasTrendData: true,
   }
 }
-
 function overallStatus(metrics: GoalMetricProgress[]): GoalProgressStatus {
   const targeted = metrics.filter(metric => metric.target !== null)
   if (targeted.length === 0) return 'insufficient_data'

@@ -273,7 +273,7 @@ export default function Meetings() {
                     {/* Görüşme Notu / Ödev ve Değerlendirmeler */}
                     {m.description && (
                       <div className="mt-2 text-sm bg-white p-3 rounded-lg border border-gray-200/60 shadow-inner">
-                        <div className="text-[10px] uppercase font-bold text-indigo-500 mb-1 tracking-wider">Değerlendirme Notu & Hedefler</div>
+                        <div className="text-[10px] uppercase font-bold text-indigo-500 mb-1 tracking-wider">Görüşme Gündemi</div>
                         <p className="text-gray-600 leading-relaxed font-medium">{m.description}</p>
                       </div>
                     )}
