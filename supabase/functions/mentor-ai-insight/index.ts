@@ -9,7 +9,7 @@ import { calculateMentorAlerts } from '../../../src/lib/mentorAlerts.ts'
 import { calculateStudentStatus, type MeetingSignal, type PerformanceSignal, type TaskSignal } from '../../../src/lib/studentStatus.ts'
 import { AIMentorServiceError, type AIMentorErrorCode } from '../../../src/lib/aiMentorErrors.ts'
 import { loadAIMentorConfig } from '../_shared/aiMentorConfig.ts'
-import { AIMentorProviderError, createOpenAIMentorProvider } from '../_shared/aiMentorProvider.ts'
+import { AIMentorProviderError, createGeminiMentorProvider } from '../_shared/aiMentorProvider.ts'
 import { loadMentorProgressData } from '../_shared/mentorProgressData.ts'
 
 const corsHeaders = {
@@ -230,7 +230,7 @@ Deno.serve(async request => {
       return json(200, { insight: insufficientInsight, contextFingerprint: fingerprint,
         weekKey: context.weeklySnapshot.weekKey, generatedAt: now.toISOString(), cached: false })
     }
-    const provider = createOpenAIMentorProvider({
+    const provider = createGeminiMentorProvider({
       apiKey: config.apiKey,
       model: config.model,
       timeoutMs: config.timeoutMs,

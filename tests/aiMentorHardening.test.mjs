@@ -11,11 +11,14 @@ function load(path, mocks = {}) {
   return module.exports
 }
 const ctx = load('src/lib/aiMentorContext.ts')
-const { createOpenAIMentorProvider } = load('supabase/functions/_shared/aiMentorProvider.ts')
+const { createGeminiMentorProvider } = load('supabase/functions/_shared/aiMentorProvider.ts')
 const { loadAIMentorConfig } = load('supabase/functions/_shared/aiMentorConfig.ts')
 const output = { summary: 'Summary', meetingTopics: [], mentorActions: [], studentFeedback: 'Feedback' }
-const provider = fetchImpl => createOpenAIMentorProvider({ apiKey: 'test', model: 'test-model', timeoutMs: 10, fetchImpl })
+const provider = fetchImpl => createGeminiMentorProvider({ apiKey: 'test', model: 'test-model', timeoutMs: 10, fetchImpl })
 const json = data => new Response(JSON.stringify(data))
+const geminiResponse = (text = JSON.stringify(output), finishReason = 'STOP') => ({
+  candidates: [{ finishReason, content: { parts: [{ text }] } }],
+})
 test('same context with reordered keys has same fingerprint', async () => {
   assert.equal(await ctx.createAIMentorContextFingerprint({ a: 1, b: 2 }), await ctx.createAIMentorContextFingerprint({ b: 2, a: 1 }))
 })
@@ -50,20 +53,59 @@ test('provider normalizes network failure', async () => {
 })
 test('missing API key is NOT_CONFIGURED', () => {
   assert.throws(() => loadAIMentorConfig(() => undefined), { code: 'NOT_CONFIGURED' })
-  assert.throws(() => createOpenAIMentorProvider({ apiKey: '', model: 'test', timeoutMs: 10 }), { code: 'NOT_CONFIGURED' })
+  assert.throws(() => createGeminiMentorProvider({ apiKey: '', model: 'test', timeoutMs: 10 }), { code: 'NOT_CONFIGURED' })
 })
 test('config defaults', () => {
-  const config = loadAIMentorConfig(name => ({ OPENAI_API_KEY: 'test', OPENAI_MODEL: 'test' })[name])
+  const config = loadAIMentorConfig(name => ({ GEMINI_API_KEY: 'test', GEMINI_MODEL: 'test' })[name])
   assert.equal(config.minuteLimit, 3); assert.equal(config.dailyLimit, 30); assert.equal(config.timeoutMs, 20000)
+  assert.equal(config.provider, 'gemini')
 })
 test('provider parses usage model latency', async () => {
-  const result = await provider(async () => json({ output_text: JSON.stringify(output), model: 'actual', usage: { input_tokens: 12, output_tokens: 8, total_tokens: 20 } })).generateMentorInsight({})
+  const result = await provider(async () => json({ ...geminiResponse(), modelVersion: 'actual', usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 8, totalTokenCount: 20 } })).generateMentorInsight({})
   assert.deepEqual(result.output, output)
   assert.deepEqual(result.usage, { inputTokens: 12, outputTokens: 8, totalTokens: 20 })
   assert.equal(result.model, 'actual'); assert.ok(result.latencyMs >= 0)
 })
 test('provider rejects malformed payloads', async () => {
-  for (const payload of [null, [], {}, { output_text: '{}' }]) await assert.rejects(provider(async () => json(payload)).generateMentorInsight({}), { code: 'INVALID_AI_OUTPUT' })
+  for (const payload of [null, [], {}, geminiResponse('{}'), geminiResponse('invalid JSON'),
+    geminiResponse(JSON.stringify(output), 'MAX_TOKENS'), geminiResponse(JSON.stringify(output), 'SAFETY')]) {
+    await assert.rejects(provider(async () => json(payload)).generateMentorInsight({}), { code: 'INVALID_AI_OUTPUT' })
+  }
+})
+
+test('Gemini uses header authentication, system instructions and structured JSON on the configured model', async () => {
+  const { AI_MENTOR_OUTPUT_JSON_SCHEMA } = load('src/lib/aiMentorOutput.ts')
+  const context = { status: { hasEnoughData: true } }
+  const result = await createGeminiMentorProvider({ apiKey: 'test', model: 'models/gemini-2.5-flash', timeoutMs: 1000,
+    fetchImpl: async (url, options) => {
+      assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent')
+      assert.equal(options.headers['x-goog-api-key'], 'test')
+      assert.equal(options.headers.Authorization, undefined)
+      const body = JSON.parse(options.body)
+      assert.ok(body.systemInstruction.parts[0].text.includes('yalnız verilen') || body.systemInstruction.parts[0].text.includes('Yalnız verilen'))
+      assert.ok(body.contents[0].parts[0].text.includes(JSON.stringify(context)))
+      assert.equal(body.generationConfig.responseMimeType, 'application/json')
+      assert.deepEqual(body.generationConfig.responseJsonSchema, AI_MENTOR_OUTPUT_JSON_SCHEMA)
+      const response = geminiResponse()
+      response.candidates[0].content.parts.unshift({ text: 'internal thought', thought: true })
+      return json(response)
+    },
+  }).generateMentorInsight(context)
+  assert.deepEqual(result.output, output)
+})
+
+test('Gemini configuration requires both Gemini variables; legacy OpenAI variables are not used', () => {
+  for (const env of [{ GEMINI_API_KEY: 'test' }, { GEMINI_MODEL: 'gemini-2.5-flash' },
+    { OPENAI_API_KEY: 'test', OPENAI_MODEL: 'test' }, { GEMINI_API_KEY: ' ', GEMINI_MODEL: 'test' }]) {
+    assert.throws(() => loadAIMentorConfig(name => env[name]), { code: 'NOT_CONFIGURED' })
+  }
+})
+
+test('Gemini HTTP errors never leak raw bodies or become application authorization/configuration errors', async () => {
+  for (const status of [400, 401, 403, 404, 500, 503]) {
+    await assert.rejects(provider(async () => new Response('private provider body', { status })).generateMentorInsight({}),
+      error => error.code === 'PROVIDER_UNAVAILABLE' && !error.message.includes('private'))
+  }
 })
 const sql = readFileSync('sql/migrations/202609020002_ai_mentor_usage.sql', 'utf8')
 const edge = readFileSync('supabase/functions/mentor-ai-insight/index.ts', 'utf8')
@@ -93,7 +135,7 @@ test('service-role restricted to telemetry and identity comes from auth', () => 
   assert.match(edge, /await complete\('failed'/)
 })
 
-function edgeHarness({ allowed = true, foreignStudent = false, contextFailure = false, telemetryFailure = false, providerFailure = false, newStudent = false, progress } = {}) {
+function edgeHarness({ allowed = true, foreignStudent = false, contextFailure = false, telemetryFailure = false, providerFailure = false, newStudent = false, progress, missingEnv } = {}) {
   const calls = []
   const studentId = '11111111-1111-4111-8111-111111111111'
   let handler
@@ -126,7 +168,7 @@ function edgeHarness({ allowed = true, foreignStudent = false, contextFailure = 
     },
     from() { assert.fail('service-role must never query student data') },
   }
-  globalThis.Deno = { env: { get: name => name === 'SUPABASE_SERVICE_ROLE_KEY' ? 'service-secret' : 'test' }, serve: fn => { handler = fn } }
+  globalThis.Deno = { env: { get: name => name === missingEnv ? undefined : name === 'SUPABASE_SERVICE_ROLE_KEY' ? 'service-secret' : 'test' }, serve: fn => { handler = fn } }
   load('supabase/functions/mentor-ai-insight/index.ts', {
     ...(progress ? { '../_shared/mentorProgressData.ts': { loadMentorProgressData: async () => progress } } : {}),
     'npm:@supabase/supabase-js@2.106.2': { createClient(url, key, options) {
@@ -138,7 +180,7 @@ function edgeHarness({ allowed = true, foreignStudent = false, contextFailure = 
     '../../../src/lib/aiMentorErrors.ts': errors,
     '../_shared/aiMentorProvider.ts': {
       AIMentorProviderError: class extends Error {},
-      createOpenAIMentorProvider: () => ({ async generateMentorInsight() {
+      createGeminiMentorProvider: () => ({ async generateMentorInsight() {
         calls.push(['provider'])
         if (providerFailure) throw new errors.AIMentorServiceError('PROVIDER_TIMEOUT')
         return { output, model: 'test-model', usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 }, latencyMs: 5 }
@@ -156,10 +198,21 @@ test('Edge success reserves authenticated identity and completes operational tel
   assert.match(body.contextFingerprint, /^[a-f0-9]{64}$/)
   const claim = h.calls.find(([name]) => name === 'claim_ai_mentor_request')[1]
   assert.equal(claim.p_teacher_id, 'authenticated-teacher')
+  assert.equal(claim.p_provider, 'gemini')
   const complete = h.calls.find(([name]) => name === 'complete_ai_mentor_request')[1]
   assert.equal(complete.p_request_status, 'succeeded')
   assert.equal(complete.p_total_tokens, 3)
   assert.doesNotMatch(JSON.stringify(complete), /Student|context|prompt|studentId/)
+})
+
+test('Edge missing Gemini key or model yields exactly NOT_CONFIGURED/503 before quota or provider', async () => {
+  for (const missingEnv of ['GEMINI_API_KEY', 'GEMINI_MODEL']) {
+    const h = edgeHarness({ missingEnv })
+    const response = await h.request()
+    assert.equal(response.status, 503)
+    assert.deepEqual(await response.json(), { code: 'NOT_CONFIGURED' })
+    assert.ok(!h.calls.some(([name]) => name === 'provider' || name === 'claim_ai_mentor_request'))
+  }
 })
 test('Edge forbids another mentor student before service-role creation', async () => {
   const h = edgeHarness({ foreignStudent: true })
@@ -200,7 +253,7 @@ test('Edge successful output survives telemetry completion failure', async () =>
 })
 
 test('daily default remains at least configured minute limit', () => {
-  const config = loadAIMentorConfig(name => ({ OPENAI_API_KEY: 'test', OPENAI_MODEL: 'test', AI_MENTOR_MINUTE_LIMIT: '60' })[name])
+  const config = loadAIMentorConfig(name => ({ GEMINI_API_KEY: 'test', GEMINI_MODEL: 'test', AI_MENTOR_MINUTE_LIMIT: '60' })[name])
   assert.equal(config.dailyLimit, 60)
 })
 

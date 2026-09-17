@@ -37,20 +37,19 @@ test('server context mevcut deterministic motorlardan yeniden oluşturulur', () 
   assert.match(edgeFunction, /buildAIMentorContext\(/)
 })
 
-test('provider strict JSON schema ister ve yanıtı runtime validate eder', () => {
-  assert.match(provider, /type: 'json_schema'/)
-  assert.match(provider, /strict: true/)
-  assert.match(provider, /schema: AI_MENTOR_OUTPUT_JSON_SCHEMA/)
+test('Gemini provider JSON schema ister ve yanıtı runtime validate eder', () => {
+  assert.match(provider, /responseMimeType: 'application\/json'/)
+  assert.match(provider, /responseJsonSchema: AI_MENTOR_OUTPUT_JSON_SCHEMA/)
   assert.match(provider, /parseAIMentorInsight\(parsed\)/)
-  assert.match(provider, /store: false/)
 })
 
-test('OpenAI API key client bundle kaynaklarında bulunmaz', () => {
+test('Gemini API key client bundle kaynaklarında bulunmaz', () => {
   const sourceFiles = filesRecursively(fileURLToPath(new URL('../src', import.meta.url))).filter(path => /\.(?:ts|tsx|js|jsx)$/.test(path))
   const clientBundleSources = sourceFiles.map(path => readFileSync(path, 'utf8')).join('\n')
 
-  assert.doesNotMatch(clientBundleSources, /OPENAI_API_KEY|VITE_OPENAI|api\.openai\.com/)
-  assert.match(provider, /api\.openai\.com\/v1\/responses/)
+  assert.doesNotMatch(clientBundleSources, /GEMINI_API_KEY|VITE_GEMINI|generativelanguage\.googleapis\.com|OPENAI_API_KEY|VITE_OPENAI/)
+  assert.match(provider, /generativelanguage\.googleapis\.com\/v1beta\/models/)
+  assert.doesNotMatch(provider, /api\.openai\.com/)
   assert.match(edgeFunction, /loadAIMentorConfig\(\)/)
   assert.doesNotMatch(edgeFunction, /serviceClient\.from\(/)
 })

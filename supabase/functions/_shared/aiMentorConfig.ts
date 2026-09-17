@@ -3,7 +3,7 @@ import { AIMentorServiceError } from '../../../src/lib/aiMentorErrors.ts'
 export type AIMentorConfig = {
   apiKey: string
   model: string
-  provider: 'openai'
+  provider: 'gemini'
   minuteLimit: number
   dailyLimit: number
   timeoutMs: number
@@ -29,8 +29,8 @@ function boundedInteger(value: string | undefined, fallback: number, minimum: nu
 }
 
 export function loadAIMentorConfig(readEnvironment: EnvironmentReader = name => Deno.env.get(name)) : AIMentorConfig {
-  const apiKey = readEnvironment('OPENAI_API_KEY')?.trim()
-  const model = readEnvironment('OPENAI_MODEL')?.trim()
+  const apiKey = readEnvironment('GEMINI_API_KEY')?.trim()
+  const model = readEnvironment('GEMINI_MODEL')?.trim()
   if (!apiKey || !model) throw new AIMentorServiceError('NOT_CONFIGURED')
 
   const minuteLimit = boundedInteger(
@@ -52,5 +52,5 @@ export function loadAIMentorConfig(readEnvironment: EnvironmentReader = name => 
     AI_MENTOR_CONFIG_DEFAULTS.maximumTimeoutMs,
   )
 
-  return { apiKey, model, provider: 'openai', minuteLimit, dailyLimit, timeoutMs }
+  return { apiKey, model, provider: 'gemini', minuteLimit, dailyLimit, timeoutMs }
 }
