@@ -9,6 +9,7 @@ export type AIMentorInsightResponse = {
   insight: AIMentorInsight
   contextFingerprint: string
   generatedAt: string
+  weekKey?: string
   cached?: boolean
 }
 
@@ -92,10 +93,18 @@ export function parseAIMentorInsightResponse(value: unknown): AIMentorInsightRes
   if (typeof value.generatedAt !== 'string' || !Number.isFinite(new Date(value.generatedAt).getTime())) {
     throw new Error('AI servisi geçerli üretim zamanı döndürmedi.')
   }
+  if (value.weekKey !== undefined && (typeof value.weekKey !== 'string'
+    || !/^\d{4}-\d{2}-\d{2}$/.test(value.weekKey)
+    || !Number.isFinite(new Date(`${value.weekKey}T00:00:00Z`).getTime())
+    || new Date(`${value.weekKey}T00:00:00Z`).toISOString().slice(0, 10) !== value.weekKey
+    || new Date(`${value.weekKey}T00:00:00Z`).getUTCDay() !== 1)) {
+    throw new Error('AI servisi geçerli hafta kimliği döndürmedi.')
+  }
   return {
     insight: parseAIMentorInsight(value.insight),
     contextFingerprint: value.contextFingerprint,
     generatedAt: value.generatedAt,
+    weekKey: value.weekKey as string | undefined,
     cached: value.cached === true,
   }
 }

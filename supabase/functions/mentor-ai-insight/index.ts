@@ -1,8 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.106.2'
 import { canGenerateAIMentorInsight } from '../../../src/lib/aiMentorAuthorization.ts'
-import { buildAIMentorContext, createAIMentorContextFingerprint } from '../../../src/lib/aiMentorContext.ts'
+import { buildAIMentorContext, createAIMentorContextFingerprint, insufficientAIMentorInsight } from '../../../src/lib/aiMentorContext.ts'
 import { calculateCompetencyMap, type TopicPerformanceSignal } from '../../../src/lib/competencyMap.ts'
 import { calculateGoalProgress, type StudentGoal } from '../../../src/lib/goalProgress.ts'
+import { selectCurrentGoal } from '../../../src/lib/goalSelection.ts'
 import type { MeetingActionItem } from '../../../src/lib/meetingBriefing.ts'
 import { calculateMentorAlerts } from '../../../src/lib/mentorAlerts.ts'
 import { calculateStudentStatus, type MeetingSignal, type PerformanceSignal, type TaskSignal } from '../../../src/lib/studentStatus.ts'
@@ -191,7 +192,7 @@ Deno.serve(async request => {
       ...performanceResult.data.topicSignals,
     ])
     const goalProgress = calculateGoalProgress({
-      goal: (goalResult.data as StudentGoal | null) ?? null,
+      goal: selectCurrentGoal(goalResult.data ? [goalResult.data as StudentGoal] : [], studentId),
       performance,
       studentStatus,
       academicInsights: competencyMap.topics.flatMap(topic => topic.status === 'insufficient_data' ? [] : [{
@@ -215,6 +216,7 @@ Deno.serve(async request => {
       now,
     })
     const context = buildAIMentorContext({
+      now,
       displayName: studentProfile.username,
       studentStatus,
       goalProgress,
@@ -222,6 +224,12 @@ Deno.serve(async request => {
       mentorAlerts,
     })
     const fingerprint = await createAIMentorContextFingerprint(context)
+    const insufficientInsight = insufficientAIMentorInsight(context)
+    if (insufficientInsight) {
+      await complete('succeeded', null, { inputTokens: 0, outputTokens: 0, totalTokens: 0 }, 0)
+      return json(200, { insight: insufficientInsight, contextFingerprint: fingerprint,
+        weekKey: context.weeklySnapshot.weekKey, generatedAt: now.toISOString(), cached: false })
+    }
     const provider = createOpenAIMentorProvider({
       apiKey: config.apiKey,
       model: config.model,
@@ -234,6 +242,7 @@ Deno.serve(async request => {
     return json(200, {
       insight: providerResult.output,
       contextFingerprint: fingerprint,
+      weekKey: context.weeklySnapshot.weekKey,
       generatedAt: new Date().toISOString(),
       cached: false,
     })

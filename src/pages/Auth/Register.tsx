@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
@@ -18,11 +18,13 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [confirmation, setConfirmation] = useState<{ email: string; teacher: boolean; mentor: boolean } | null>(null)
   const [resent, setResent] = useState(false)
+  const submitting = useRef(false)
   const navigate = useNavigate()
   const auth = useAuth()
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    if (submitting.current) return
 
     if (!username.trim()) {
       showError('Kullanıcı adı boş bırakılamaz.')
@@ -41,51 +43,60 @@ export default function Register() {
       return
     }
 
+    submitting.current = true
     setLoading(true)
-    const result = await auth.register({
-      username: username.trim(),
-      email: email.trim(),
-      password,
-      role,
-      mentor_join_code: role === 'student' ? mentorJoinCode : undefined,
-      teacher_invite_code: role === 'teacher' ? teacherInviteCode : undefined,
-    })
-    setLoading(false)
+    try {
+      const result = await auth.register({
+        username: username.trim(),
+        email: email.trim(),
+        password,
+        role,
+        mentor_join_code: role === 'student' ? mentorJoinCode : undefined,
+        teacher_invite_code: role === 'teacher' ? teacherInviteCode : undefined,
+      })
 
-    if (result.requiresEmailConfirmation) {
-      setConfirmation({ email: email.trim(), teacher: !!result.requiresTeacherInviteReentry, mentor: !!mentorJoinCode.trim() })
-      setPassword('')
-      return
-    }
+      if (result.error) {
+        showError(authMessage(result.error))
+        return
+      }
+      if (result.requiresEmailConfirmation) {
+        setConfirmation({ email: email.trim(), teacher: !!result.requiresTeacherInviteReentry, mentor: !!mentorJoinCode.trim() })
+        setPassword('')
+        return
+      }
 
-    if (result.error) {
-      showError(authMessage(result.error))
-      return
-    }
-    if (!result.user) {
-      showError('Doğrulanmış kullanıcı profili alınamadı.')
-      return
-    }
+      if (!result.user) {
+        showError('Doğrulanmış kullanıcı profili alınamadı.')
+        return
+      }
 
-    if (result.warning) showError(result.warning)
-    showSuccess('Hoş geldiniz! Hesabınız oluşturuldu.')
-    navigate(result.user.role === 'teacher' ? '/teacher' : '/student', { replace: true })
+      if (result.warning) showError(result.warning)
+      showSuccess('Hoş geldiniz! Hesabınız oluşturuldu.')
+      navigate(result.user.role === 'teacher' ? '/teacher' : '/student', { replace: true })
+    } catch (error) {
+      showError(authMessage(error))
+    } finally {
+      submitting.current = false
+      setLoading(false)
+    }
   }
 
   if (confirmation) return <section role="status" className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
     <h2 className="text-xl font-bold">Hesabın oluşturuldu.</h2>
     <p>Devam etmek için e-posta adresini doğrula.</p>
+    <p>Hesabınızı etkinleştirmek için e-posta adresinize gönderilen doğrulama bağlantısını açın.</p>
     <p>{confirmation.email} adresindeki gelen kutunu ve spam klasörünü kontrol et.</p>
     {confirmation.teacher && <p>Doğrulama sonrası giriş yaptığında öğretmen davet kodunu yeniden gir.</p>}
     {confirmation.mentor && <p>Doğrulama sonrası mentor katılım kodunu öğrenci panelinden yeniden gir.</p>}
     <Button type="button" loading={loading} disabled={resent} onClick={async () => {
-      if (!supabase || loading || resent) return
+      if (!supabase || submitting.current || resent) return
+      submitting.current = true
       setLoading(true)
       try {
         const { error } = await supabase.auth.resend({ type: 'signup', email: confirmation.email })
         if (error) showError(authMessage(error))
         else { setResent(true); showSuccess('Doğrulama e-postası tekrar gönderildi.') }
-      } catch (error) { showError(authMessage(error)) } finally { setLoading(false) }
+      } catch (error) { showError(authMessage(error)) } finally { submitting.current = false; setLoading(false) }
     }}>{resent ? 'Doğrulama e-postası gönderildi' : 'Doğrulama e-postasını tekrar gönder'}</Button>
     <Link className="block font-semibold text-indigo-700" to={confirmation.teacher ? '/login?teacherInvite=required' : '/login'}>Doğruladım, giriş yap</Link>
   </section>

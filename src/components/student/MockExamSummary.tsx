@@ -10,10 +10,17 @@ export default function MockExamSummary({ studentId }: { studentId: string }) {
   const [state, setState] = useState('loading')
   useEffect(() => {
     let active = true
-    setState('loading')
-    loadAssessmentData([studentId]).then(data => { if (active) { setRows(data.performance); setState('ready') } })
-      .catch(() => { if (active) setState('error') })
-    return () => { active = false }
+    let request = 0
+    const reload = () => {
+      const currentRequest = ++request
+      setState('loading')
+      loadAssessmentData([studentId]).then(data => {
+        if (active && currentRequest === request) { setRows(data.performance); setState('ready') }
+      }).catch(() => { if (active && currentRequest === request) setState('error') })
+    }
+    reload()
+    window.addEventListener('performance_updated', reload)
+    return () => { active = false; window.removeEventListener('performance_updated', reload) }
   }, [studentId])
   return <section className="rounded-2xl bg-white border p-5 space-y-3" aria-label="Deneme özeti">
     <h3 className="font-bold">Denemelerim</h3>

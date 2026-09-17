@@ -8,6 +8,7 @@ import {
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { loadAssessmentData } from '../lib/mockExamData'
 import type { StudentStatusResult } from '../lib/studentStatus'
+import { selectCurrentGoal } from '../lib/goalSelection'
 
 export function useGoalProgress(studentId: string, studentStatus?: StudentStatusResult) {
   const [goal, setGoal] = useState<StudentGoal | null>(null)
@@ -43,7 +44,7 @@ export function useGoalProgress(studentId: string, studentStatus?: StudentStatus
       ])
 
       if (goalResult.error) throw goalResult.error
-      setGoal((goalResult.data as StudentGoal | null) ?? null)
+      setGoal(selectCurrentGoal(goalResult.data ? [goalResult.data as StudentGoal] : [], studentId))
       setPerformance(performanceResult.performance)
     } catch (caughtError) {
       console.error('Goal progress could not be loaded:')

@@ -9,6 +9,7 @@ import { formatNumber as formatValue } from '../../lib/format'
 import {
   buildAIMentorContext,
   createAIMentorContextFingerprint,
+  aiMentorWeekKey,
 } from '../../lib/aiMentorContext'
 function formatNumber(value: number | null, suffix = '') {
   if (value === null) return 'Henüz yeterli veri yok'
@@ -101,9 +102,10 @@ export default function MentorSummary({
   competencyMap: CompetencyMapResult
   alerts: MentorAlertResult
 }) {
+  const weekKey = aiMentorWeekKey()
   const context = useMemo(() => buildAIMentorContext({
     displayName, studentStatus: status, goalProgress, competencyMap, mentorAlerts: alerts,
-  }), [displayName, status, goalProgress, competencyMap, alerts])
+  }), [displayName, status, goalProgress, competencyMap, alerts, weekKey])
   const [fingerprint, setFingerprint] = useState<{ context: typeof context; value: string } | null>(null)
   const currentFingerprint = fingerprint?.context === context ? fingerprint.value : null
   useEffect(() => {

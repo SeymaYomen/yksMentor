@@ -37,6 +37,84 @@ function derived(performance, topics = []) {
 }
 const canonical = (rows, old = []) => exams.mergeAssessmentHistory(old, rows, catalog)
 
+test('every canonical TYT/AYT subject enforces exact, below and above limits in domain and UI validation', () => {
+  for (const [exam_type, subjects] of Object.entries(exams.EXAM_QUESTION_LIMITS)) {
+    for (const [name, limit] of Object.entries(subjects)) {
+      const subject = { id: 'subject', name, exam_type }
+      const localCatalog = { subjects: [subject], topics: [] }
+      for (const [correct, wrong, blank, valid] of [[limit - 2, 1, 1, true], [limit - 2, 0, 1, true], [limit, 1, 0, false], [-1, 0, 0, false], [0, 0.5, 0, false], [0, 0, -1, false]]) {
+        const row = { subject_id: subject.id, correct_count: correct, wrong_count: wrong, blank_count: blank }
+        const check = () => exams.validateMockExam(exam({ exam_type, subject_results: [row] }), localCatalog)
+        assert.equal(exams.subjectResultError(row, localCatalog) === null, valid, `${exam_type}/${name}`)
+        if (valid) assert.doesNotThrow(check)
+        else assert.throws(check)
+      }
+    }
+  }
+})
+
+test('goal current, gap, percentage and trend remain independent for zero, one, two and completed assessments', () => {
+  const { netProgressPercent } = loadTs('src/lib/goalPresentation.ts')
+  for (const [values, current, remaining, percent, trend] of [
+    [[], null, null, null, false], [[0], 0, 30, 0, false], [[15], 15, 15, 50, false],
+    [[15, 24], 24, 6, 80, true], [[30], 30, 0, 100, false], [[35], 35, 0, 100, false],
+  ]) {
+    const progress = calculateGoalProgress({ goal: { ...goal, target_tyt_net: 30, target_ayt_net: null },
+      performance: values.map((tyt_net, i) => ({ tyt_net, date: `2026-09-${10 + i}` })), now })
+    const metric = progress.metrics.tyt
+    assert.equal(metric.current, current)
+    assert.equal(metric.remaining, remaining)
+    assert.equal(netProgressPercent(metric), percent)
+    assert.equal(metric.hasTrendData, trend)
+    if (current !== null && current < 30 && !trend) assert.match(progress.label, /Güncel net mevcut/)
+  }
+})
+
+test('briefing retains assessments older than its activity period and labels latest-pair delta accurately', () => {
+  const rows = canonical([exam({ id: 'old', exam_date: '2026-07-01', subject_results: [result(10)] }),
+    exam({ exam_date: '2026-07-02', subject_results: [result(20)] })], [legacy()])
+  const data = derived(rows)
+  assert.equal(data.briefing.performance.tyt.current, 20)
+  assert.equal(data.briefing.performance.tyt.delta, 10)
+  assert.equal(exams.examHistory(rows, 'TYT').length, 2)
+  const Panel = loadTs('src/components/meetings/MeetingBriefingPanel.tsx').default
+  const html = renderToStaticMarkup(React.createElement(Panel, { briefing: data.briefing, loading: false, error: null }))
+  assert.match(html, /Son iki deneme:/)
+  assert.match(html, /Güncel net mevcut/)
+})
+
+test('mounted assessment summary reloads after performance updates and ignores stale responses after refresh/unmount', async () => {
+  const pending = [], writes = [], effects = []
+  const events = new EventTarget()
+  const previousWindow = globalThis.window
+  globalThis.window = events
+  const Summary = loadTs('src/components/student/MockExamSummary.tsx', {
+    react: { ...React, useState: initial => [initial, value => writes.push(value)], useEffect: effect => effects.push(effect) },
+    '../../lib/mockExamData': { loadAssessmentData: ids => { assert.deepEqual(ids, ['s']); return new Promise(resolve => pending.push(resolve)) } },
+  }).default
+  let cleanup
+  try {
+    Summary({ studentId: 's' })
+    cleanup = effects[0]()
+    events.dispatchEvent(new Event('performance_updated'))
+    assert.equal(pending.length, 2)
+    pending[1]({ performance: ['new'] })
+    await new Promise(resolve => setImmediate(resolve))
+    pending[0]({ performance: ['old'] })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.ok(writes.some(value => Array.isArray(value) && value[0] === 'new'))
+    assert.ok(!writes.some(value => Array.isArray(value) && value[0] === 'old'))
+    events.dispatchEvent(new Event('performance_updated'))
+    cleanup()
+    const count = writes.length
+    pending[2]({ performance: ['unmounted'] })
+    await new Promise(resolve => setImmediate(resolve))
+    events.dispatchEvent(new Event('performance_updated'))
+    assert.equal(pending.length, 3)
+    assert.equal(writes.length, count)
+  } finally { cleanup?.(); globalThis.window = previousWindow }
+})
+
 test('subject limits reject over-total, fractions and negative counts, while exact limits and real zero pass', () => {
   for (const row of [result(40, 1), result(39, 0, 2), result(-1), result(0.5)]) {
     assert.throws(() => exams.validateMockExam(exam({ subject_results: [row] }), catalog))
@@ -168,6 +246,26 @@ function dbFor(source) {
       then(resolve) { let rows = (source[table] ?? []).filter(row => filters.every(filter => filter(row))); if (range) rows = rows.slice(range[0], range[1] + 1); return Promise.resolve({ data: rows, error: null }).then(resolve) } }
   } }
 }
+test('assessment loader sees saved and deleted rows on reload, isolates students and propagates query errors', async () => {
+  const source = { performance: [legacy({ ayt_net: 25 })], mock_exams: [], mock_exam_subject_results: [],
+    mock_exam_topic_errors: [], exam_subjects: catalog.subjects, exam_topics: catalog.topics }
+  const db = dbFor(source)
+  const { loadAssessmentData } = loadTs('src/lib/mockExamData.ts', { './supabase': { supabase: db, isSupabaseConfigured: true } })
+  assert.equal(exams.examHistory((await loadAssessmentData(['s'])).performance, 'TYT')[0].net, 80)
+  source.mock_exams.push(exam(), exam({ id: 'other', student_id: 'other' }))
+  source.mock_exam_subject_results.push({ ...result(), id: 'r', exam_id: 'exam1' })
+  const saved = await loadAssessmentData(['s'])
+  assert.equal(saved.exams.length, 1)
+  assert.equal(exams.examHistory(saved.performance, 'TYT')[0].net, 30)
+  assert.equal(derived(saved.performance).briefing.performance.tyt.current, 30)
+  assert.equal(exams.examHistory(saved.performance, 'AYT')[0].net, 25)
+  source.mock_exams = []
+  assert.equal(exams.examHistory((await loadAssessmentData(['s'])).performance, 'TYT')[0].net, 80)
+  const broken = loadTs('src/lib/mockExamData.ts', { './supabase': { supabase: { from() {
+    return { select() { return this }, in() { return this }, order() { return this }, range() { return Promise.resolve({ data: null, error: new Error('read failed') }) } }
+  } }, isSupabaseConfigured: true } })
+  await assert.rejects(broken.loadAssessmentData(['s']), /read failed/)
+})
 test('teacher summary loader and Edge loader consume the same canonical mock/session sources', async () => {
   const parent = exam()
   const source = { profiles: [{ id: 's', username: 'Ada', created_at: null, mentor_id: 'teacher' }], performance: [legacy()],

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { loadStudyPerformance } from '../lib/studySessionData'
 import { calculateGoalProgress, type GoalProgressResult, type StudentGoal } from '../lib/goalProgress'
+import { selectCurrentGoal } from '../lib/goalSelection'
 import { loadTopicPerformanceSignals, type StudentTopicPerformanceSignal } from '../lib/academicData'
 import { calculateCompetencyMap, type CompetencyMapResult } from '../lib/competencyMap'
 import { calculateMentorAlerts, type MentorAlertResult } from '../lib/mentorAlerts'
@@ -94,7 +95,7 @@ export async function loadMentorStudentSummaries(teacherId: string): Promise<Men
   const tasksByStudent = groupByStudent((taskResult.data ?? []) as TaskRow[])
   const meetingsByStudent = groupByStudent((meetingResult.data ?? []) as MeetingRow[])
   const actionItemsByStudent = groupByStudent((actionItemResult.data ?? []) as MeetingActionItem[])
-  const goalsByStudent = new Map(((goalResult.data ?? []) as StudentGoal[]).map(goal => [goal.student_id, goal]))
+  const goalsByStudent = groupByStudent((goalResult.data ?? []) as StudentGoal[])
   const topicPerformanceByStudent = topicPerformance.reduce<Record<string, StudentTopicPerformanceSignal[]>>((groups, row) => {
     ;(groups[row.studentId] ??= []).push(row)
     return groups
@@ -113,7 +114,7 @@ export async function loadMentorStudentSummaries(teacherId: string): Promise<Men
     })
     const competencyMap = calculateCompetencyMap(topicPerformanceByStudent[profile.id] ?? [])
     const goalProgress = calculateGoalProgress({
-      goal: goalsByStudent.get(profile.id) ?? null,
+      goal: selectCurrentGoal(goalsByStudent[profile.id] ?? [], profile.id),
       performance,
       studentStatus: status,
       academicInsights: competencyMap.topics.flatMap(topic => topic.status === 'insufficient_data' ? [] : [{

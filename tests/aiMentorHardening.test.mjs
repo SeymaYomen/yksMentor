@@ -93,7 +93,7 @@ test('service-role restricted to telemetry and identity comes from auth', () => 
   assert.match(edge, /await complete\('failed'/)
 })
 
-function edgeHarness({ allowed = true, foreignStudent = false, contextFailure = false, telemetryFailure = false, providerFailure = false } = {}) {
+function edgeHarness({ allowed = true, foreignStudent = false, contextFailure = false, telemetryFailure = false, providerFailure = false, newStudent = false, progress } = {}) {
   const calls = []
   const studentId = '11111111-1111-4111-8111-111111111111'
   let handler
@@ -109,7 +109,7 @@ function edgeHarness({ allowed = true, foreignStudent = false, contextFailure = 
         order() { return query }, range() { return query }, in() { return query },
         then(resolve) {
           const data = table === 'profiles'
-            ? id === 'authenticated-teacher' ? { id, role: 'teacher' } : { id: studentId, username: 'Student', role: 'student', mentor_id: foreignStudent ? 'other-teacher' : 'authenticated-teacher', created_at: '2026-09-01' }
+            ? id === 'authenticated-teacher' ? { id, role: 'teacher' } : { id: studentId, username: 'Student', role: 'student', mentor_id: foreignStudent ? 'other-teacher' : 'authenticated-teacher', created_at: newStudent ? new Date().toISOString() : '2026-09-01' }
             : table === 'student_goals' ? null : []
           return Promise.resolve({ data, error: contextFailure && table === 'performance' ? { message: 'private database message' } : null }).then(resolve)
         },
@@ -128,6 +128,7 @@ function edgeHarness({ allowed = true, foreignStudent = false, contextFailure = 
   }
   globalThis.Deno = { env: { get: name => name === 'SUPABASE_SERVICE_ROLE_KEY' ? 'service-secret' : 'test' }, serve: fn => { handler = fn } }
   load('supabase/functions/mentor-ai-insight/index.ts', {
+    ...(progress ? { '../_shared/mentorProgressData.ts': { loadMentorProgressData: async () => progress } } : {}),
     'npm:@supabase/supabase-js@2.106.2': { createClient(url, key, options) {
       calls.push(['client', key])
       if (key === 'service-secret') return serviceClient
@@ -201,6 +202,24 @@ test('Edge successful output survives telemetry completion failure', async () =>
 test('daily default remains at least configured minute limit', () => {
   const config = loadAIMentorConfig(name => ({ OPENAI_API_KEY: 'test', OPENAI_MODEL: 'test', AI_MENTOR_MINUTE_LIMIT: '60' })[name])
   assert.equal(config.dailyLimit, 60)
+})
+
+test('Edge insufficient/no-data and explicit zero return valid deterministic output without provider calls', async () => {
+  for (const performance of [[], [{ date: new Date().toISOString().slice(0, 10), tyt_net: 0, daily_hours: 0 }]]) {
+    const h = edgeHarness({ newStudent: true, progress: { performance, exams: [], topicSignals: [] } })
+    const response = await h.request()
+    assert.equal(response.status, 200)
+    const body = await response.json()
+    const { parseAIMentorInsightResponse } = load('src/lib/aiMentorOutput.ts')
+    assert.equal(parseAIMentorInsightResponse(body).weekKey, ctx.aiMentorWeekKey())
+    assert.equal(h.calls.some(([name]) => name === 'provider'), false)
+    assert.equal(h.calls.filter(([name]) => name === 'claim_ai_mentor_request').length, 1)
+    const complete = h.calls.find(([name]) => name === 'complete_ai_mentor_request')[1]
+    assert.equal(complete.p_request_status, 'succeeded')
+    assert.equal(complete.p_total_tokens, 0)
+    if (performance.length) assert.match(body.insight.summary, /TYT sonucu: 0 net/)
+    else assert.match(body.insight.summary, /yeterli kayıt yok/)
+  }
 })
 test('client normalizes rejected invocation', async () => {
   const { SupabaseEdgeAIMentorInsightService } = load('src/services/aiMentorService.ts', {

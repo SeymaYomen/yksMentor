@@ -149,9 +149,9 @@ test('neutral student status retains its neutral visual treatment', () => {
 
 function aiPanel(initial = {}, generated = async () => { throw new Error('private backend payload') }) {
   const states = [initial.results ?? {}, initial.loading ?? {}, initial.errors ?? {}]
-  let index = 0
-  const refs = { current: new Set() }
-  const react = { ...React, useId: () => 'ai-test', useRef: () => refs, useState: () => {
+  let index = 0, refIndex = 0
+  const refs = []
+  const react = { ...React, useId: () => 'ai-test', useRef: initial => refs[refIndex++] ??= { current: initial }, useState: () => {
     const i = index++
     return [states[i], value => { states[i] = typeof value === 'function' ? value(states[i]) : value }]
   } }
@@ -160,11 +160,11 @@ function aiPanel(initial = {}, generated = async () => { throw new Error('privat
     react,
     '../../services/aiMentorService': { aiMentorInsightService: { generateMentorInsight: generated } },
     '../../lib/aiMentorErrors': errors,
-    '../../lib/aiMentorContext': { isAIMentorInsightStale: (current, stored) => !!current && !!stored && current !== stored },
+    '../../lib/aiMentorContext': moduleAt('src/lib/aiMentorContext.ts'),
   }).default
-  return { tree(props = {}) { index = 0; return Panel({ studentId: 'student', currentFingerprint: 'fresh', ...props }) }, states, errors }
+  return { tree(props = {}) { index = 0; refIndex = 0; return Panel({ studentId: 'student', currentFingerprint: 'fresh', ...props }) }, states, errors }
 }
-const insight = { contextFingerprint: 'fresh', generatedAt: '2026-09-12T12:00:00Z', insight: { summary: 'Özet metni', meetingTopics: [], mentorActions: [], studentFeedback: 'Geri bildirim' } }
+const insight = { contextFingerprint: 'fresh', generatedAt: new Date().toISOString(), insight: { summary: 'Özet metni', meetingTopics: [], mentorActions: [], studentFeedback: 'Geri bildirim' } }
 const markup = tree => renderToStaticMarkup(tree)
 function buttons(tree) {
   if (!React.isValidElement(tree)) return []
@@ -174,7 +174,7 @@ test('AI freshness, stale refresh and transparency are visible without backend d
   const panel = aiPanel({ results: { student: insight } })
   assert.match(markup(panel.tree()), /Güncel/)
   const stale = markup(panel.tree({ currentFingerprint: 'changed' }))
-  assert.match(stale, /Yeni öğrenci verileri var\./)
+  assert.match(stale, /Hafta veya öğrenci verileri değişti\./)
   assert.match(stale, /Haftalık AI Değerlendirmesi/)
   assert.doesNotMatch(stale, />Güncel</)
   assert.match(stale, /Bu yorum öğrencinin hedef, performans, görev, konu yeterliliği ve aktif uyarı verilerine dayanır\./)

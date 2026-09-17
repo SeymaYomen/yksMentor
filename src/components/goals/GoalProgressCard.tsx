@@ -47,7 +47,7 @@ function Metric({ name, metric }: { name: string; metric: GoalMetricProgress }) 
           Son 30 gün: {metric.change30Days > 0 ? '+' : ''}{formatNet(metric.change30Days)}
         </div>
       )}
-      {metric.current !== null && !metric.hasTrendData && <p className="mt-2 text-xs text-slate-500">Trend için bir deneme daha gerekli.</p>}
+      {metric.current !== null && !metric.hasTrendData && <p className="mt-2 text-xs text-slate-500">Trend için son 30 günde en az 2 deneme gerekli.</p>}
     </div>
   )
 }

@@ -382,7 +382,9 @@ export function calculateGoalProgress({
     hasGoal: true,
     goal,
     status,
-    label: statusLabel(status),
+    label: status === 'insufficient_data' && [tyt, ayt].some(metric => metric.target !== null && metric.current !== null)
+      ? 'Güncel net mevcut; ilerleme trendi için veri yetersiz'
+      : statusLabel(status),
     metrics: { tyt, ayt },
     reasons: buildReasons(goal, tyt, ayt, status),
     roadmap: buildRoadmap(goal, tyt, ayt, studentStatus, targetDatePassed, academicInsights),

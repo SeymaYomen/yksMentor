@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { buildMeetingBriefing, type MeetingActionItem, type MeetingBriefing } from '../lib/meetingBriefing'
 import { calculateGoalProgress, type StudentGoal } from '../lib/goalProgress'
+import { selectCurrentGoal } from '../lib/goalSelection'
 import { loadTopicPerformanceSignals, type StudentTopicPerformanceSignal } from '../lib/academicData'
 import { calculateCompetencyMap } from '../lib/competencyMap'
 import { calculateStudentStatus } from '../lib/studentStatus'
@@ -141,7 +142,7 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
     const tasksByStudent = groupByStudent(tasks)
     const meetingsByStudent = groupByStudent(meetings)
     const itemsByStudent = groupByStudent(actionItems)
-    const goalsByStudent = new Map(goals.map(goal => [goal.student_id, goal]))
+    const goalsByStudent = groupByStudent(goals)
     const topicPerformanceByStudent = topicPerformance.reduce<Record<string, StudentTopicPerformanceSignal[]>>((groups, row) => {
       ;(groups[row.studentId] ??= []).push(row)
       return groups
@@ -161,7 +162,7 @@ export function useMeetingGuidance(role: UserRole | undefined, userId: string | 
       })
       const competencyMap = calculateCompetencyMap(topicPerformanceByStudent[meeting.student_id] ?? [])
       const goalProgress = calculateGoalProgress({
-        goal: goalsByStudent.get(meeting.student_id) ?? null,
+        goal: selectCurrentGoal(goalsByStudent[meeting.student_id] ?? [], meeting.student_id),
         performance: studentPerformance,
         studentStatus,
         academicInsights: competencyMap.topics.flatMap(topic => topic.status === 'insufficient_data' ? [] : [{

@@ -113,7 +113,7 @@ export default function MeetingBriefingPanel({ briefing, loading, error }: Props
                       ? 'Hedef seviyesi aşıldı veya karşılandı.'
                       : `Hedefin ${formatNumber(metric.remaining ?? 0)} net gerisinde.`}
                   {periodChange.hasData && periodChange.delta !== null && (
-                    <span className="text-gray-500"> {briefing.period.label}: {periodChange.delta > 0 ? '+' : ''}{formatNumber(periodChange.delta)} net.</span>
+                    <span className="text-gray-500"> Son iki deneme: {periodChange.delta > 0 ? '+' : ''}{formatNumber(periodChange.delta)} net.</span>
                   )}
                 </p>
               )

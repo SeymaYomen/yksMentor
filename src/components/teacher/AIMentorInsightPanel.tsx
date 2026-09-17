@@ -2,7 +2,7 @@ import React, { useId, useRef, useState } from 'react'
 import { aiMentorInsightService } from '../../services/aiMentorService'
 import type { AIMentorInsightResponse } from '../../lib/aiMentorOutput'
 
-import { isAIMentorInsightStale } from '../../lib/aiMentorContext'
+import { aiMentorWeekKey, isAIMentorInsightStale } from '../../lib/aiMentorContext'
 import { AIMentorServiceError, aiMentorErrorMessage } from '../../lib/aiMentorErrors'
 
 export default function AIMentorInsightPanel({
@@ -15,26 +15,33 @@ export default function AIMentorInsightPanel({
   const titleId = useId()
 
   const [results, setResults] = useState<Record<string, AIMentorInsightResponse>>({})
+  const resultsRef = useRef<Record<string, AIMentorInsightResponse>>({})
   const pending = useRef(new Set<string>())
   const [loadingStudents, setLoadingStudents] = useState<Record<string, boolean>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const result = results[studentId]
   const loading = Boolean(loadingStudents[studentId])
-  const stale = isAIMentorInsightStale(currentFingerprint, result?.contextFingerprint ?? null)
+  const resultWeek = result ? result.weekKey ?? aiMentorWeekKey(new Date(result.generatedAt)) : null
+  const stale = Boolean(result && resultWeek !== aiMentorWeekKey())
+    || isAIMentorInsightStale(currentFingerprint, result?.contextFingerprint ?? null)
   const error = errors[studentId]
 
   async function generateInsight() {
     if (pending.current.has(studentId)) return
+    const existing = resultsRef.current[studentId]
+    // Recheck the clock on click, including when the panel stayed open overnight.
+    if (existing && currentFingerprint && existing.contextFingerprint === currentFingerprint
+      && (existing.weekKey ?? aiMentorWeekKey(new Date(existing.generatedAt))) === aiMentorWeekKey()) return
     pending.current.add(studentId)
     setLoadingStudents(current => ({ ...current, [studentId]: true }))
     setErrors(current => ({ ...current, [studentId]: '' }))
     try {
       const response = await aiMentorInsightService.generateMentorInsight(studentId)
+      resultsRef.current[studentId] = response
       setResults(current => ({ ...current, [studentId]: response }))
     } catch (caughtError) {
       const code = caughtError instanceof AIMentorServiceError ? caughtError.code : 'INTERNAL_ERROR'
-      setErrors(current => ({ ...current, [studentId]: code === 'RATE_LIMITED' || code === 'UNAUTHORIZED' || code === 'FORBIDDEN'
-        ? aiMentorErrorMessage(code) : 'AI Mentor şu anda kullanılamıyor.' }))
+      setErrors(current => ({ ...current, [studentId]: aiMentorErrorMessage(code) }))
     } finally {
       pending.current.delete(studentId)
       setLoadingStudents(current => ({ ...current, [studentId]: false }))
@@ -59,7 +66,7 @@ export default function AIMentorInsightPanel({
       </div>
 
       {result && stale && (
-        <p className="mt-3 text-sm text-amber-800" role="status">Yeni öğrenci verileri var. Bu yorum önceki verilere göre oluşturuldu.</p>
+        <p className="mt-3 text-sm text-amber-800" role="status">Hafta veya öğrenci verileri değişti. Bu yorum önceki değerlendirmeye aittir.</p>
       )}
       {result && currentFingerprint && !stale && <p role="status" className="mt-3 text-xs text-emerald-700">Güncel</p>}
       {error && (
@@ -68,7 +75,7 @@ export default function AIMentorInsightPanel({
         </div>
       )}
 
-      {result && !loading && (
+      {result && (
         <div className="mt-4 space-y-4 border-t border-violet-100 pt-4">
           <div>
             <h6 className="text-xs font-bold uppercase tracking-wider text-violet-700">Özet</h6>
@@ -99,7 +106,7 @@ export default function AIMentorInsightPanel({
           </div>
 
           <p className="text-xs text-gray-500">
-            {new Date(result.generatedAt).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })} tarihinde oluşturuldu.
+            {resultWeek} haftası · {new Date(result.generatedAt).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', dateStyle: 'medium', timeStyle: 'short' })} tarihinde oluşturuldu.
           </p>
         </div>
       )}

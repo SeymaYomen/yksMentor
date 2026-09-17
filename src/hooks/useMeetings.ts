@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { UserRole } from './useAuth'
 
@@ -22,8 +22,11 @@ export function useMeetings(role: UserRole | undefined, userId: string | undefin
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const requestVersion = useRef(0)
 
   async function loadMeetings() {
+    const version = ++requestVersion.current
+    setMeetings([])
     if (!role || !userId || !supabase) {
       setMeetings([])
       setLoading(false)
@@ -41,7 +44,9 @@ export function useMeetings(role: UserRole | undefined, userId: string | undefin
       query = supabase.from('meetings').select(`${sharedColumns}, profiles!meetings_teacher_id_fkey(username)`).eq('student_id', userId)
     }
 
+    try {
     const { data, error } = await query.order('scheduled_at', { ascending: true })
+    if (version !== requestVersion.current) return
 
     if (!error && data) {
       const rows = data as unknown as Meeting[]
@@ -53,14 +58,18 @@ export function useMeetings(role: UserRole | undefined, userId: string | undefin
             if (result.error) throw result.error
             return { ...meeting, private_note: result.data as string | null }
           }))
-          setMeetings(notes)
-        } catch { setError(new Error('Özel görüşme notları yüklenemedi.')); setMeetings([]) }
+          if (version === requestVersion.current) setMeetings(notes)
+        } catch { if (version === requestVersion.current) { setError(new Error('Özel görüşme notları yüklenemedi.')); setMeetings([]) } }
       } else setMeetings(rows)
     } else if (error) {
       console.error('Meetings could not be loaded:')
       setError(new Error(error.message))
     }
-    setLoading(false)
+    } catch {
+      if (version === requestVersion.current) setError(new Error('Görüşmeler yüklenemedi.'))
+    } finally {
+      if (version === requestVersion.current) setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -68,7 +77,7 @@ export function useMeetings(role: UserRole | undefined, userId: string | undefin
 
     const handleUpdate = () => loadMeetings()
     window.addEventListener('meetings_updated', handleUpdate)
-    return () => window.removeEventListener('meetings_updated', handleUpdate)
+    return () => { ++requestVersion.current; window.removeEventListener('meetings_updated', handleUpdate) }
   }, [role, userId])
 
   async function scheduleMeeting(data: ScheduleMeetingInput) {

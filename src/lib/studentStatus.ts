@@ -140,7 +140,13 @@ export function weeklyStudyComparison(records: PerformanceSignal[], now: Date) {
   const start = boundary(14)
   const days = new Map<string, number>()
   for (const row of records) {
-    const day = (row.date || row.created_at || '').slice(0, 10)
+    const raw = row.date || row.created_at
+    if (!raw) continue
+    const parsed = new Date(raw)
+    if (!Number.isFinite(parsed.getTime())) continue
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+    if (dateOnly && parsed.toISOString().slice(0, 10) !== raw) continue
+    const day = dateOnly ? raw : dayKey(parsed)
     if (day > start && day <= end && typeof row.daily_hours === 'number' && Number.isFinite(row.daily_hours) && row.daily_hours >= 0) {
       days.set(day, (days.get(day) ?? 0) + row.daily_hours)
     }

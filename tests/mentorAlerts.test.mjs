@@ -253,7 +253,7 @@ const summary = compile('../src/components/teacher/MentorSummary.tsx', id => {
   if (id === './StudentStatusBadge') return badge
   if (id === './AIMentorInsightPanel') return { default: () => null }
   if (id === '../../lib/competencyMap') return { selectCompetencyHighlights: () => ({ strong: [], developing: [], attention: [] }) }
-  if (id === '../../lib/aiMentorContext') return { buildAIMentorContext: () => ({}) }
+  if (id === '../../lib/aiMentorContext') return { ...compile('../src/lib/aiMentorContext.ts'), buildAIMentorContext: () => ({}) }
   throw new Error(`Unexpected presentation dependency: ${id}`)
 })
 function renderSummary(tasks) {
