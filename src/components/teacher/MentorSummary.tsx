@@ -11,6 +11,10 @@ import {
   createAIMentorContextFingerprint,
   aiMentorWeekKey,
 } from '../../lib/aiMentorContext'
+
+// Temporarily disabled for v1 until the external Gemini access issue is resolved.
+const AI_MENTOR_UI_ENABLED = false
+
 function formatNumber(value: number | null, suffix = '') {
   if (value === null) return 'Henüz yeterli veri yok'
   if (suffix === ' saat') {
@@ -159,7 +163,7 @@ export default function MentorSummary({
         </div>
       )}
 
-      <AIMentorInsightPanel studentId={alerts.studentId} currentFingerprint={currentFingerprint} />
+      {AI_MENTOR_UI_ENABLED && <AIMentorInsightPanel studentId={alerts.studentId} currentFingerprint={currentFingerprint} />}
 
       <div className="mt-4 grid gap-5 2xl:grid-cols-2">
         <div>
