@@ -16,8 +16,99 @@ const { loadAIMentorConfig } = load('supabase/functions/_shared/aiMentorConfig.t
 const output = { summary: 'Summary', meetingTopics: [], mentorActions: [], studentFeedback: 'Feedback' }
 const provider = fetchImpl => createGeminiMentorProvider({ apiKey: 'test', model: 'test-model', timeoutMs: 10, fetchImpl })
 const json = data => new Response(JSON.stringify(data))
+
+test('Gemini transport diagnostic classifies pre-response failures without logging sensitive exception content', async () => {
+  const logs = [], original = console.error
+  console.error = (...args) => logs.push(args.join(' '))
+  try {
+    for (const [failure, expected] of [
+      [new TypeError('fetch failed https://example.test?key=PRIVATE_KEY Authorization: PRIVATE_HEADER PRIVATE_STUDENT'), 'Network request failed'],
+      [new Error('dns error PRIVATE_CONTEXT'), 'DNS resolution failed'],
+      [new Error('TLS certificate PRIVATE_CONTEXT'), 'TLS connection failed'],
+      [Object.assign(new Error('PRIVATE_CONTEXT'), { name: 'PRIVATE_NAME' }), 'Request failed before HTTP response'],
+      ['PRIVATE_CONTEXT', 'Request failed before HTTP response'],
+    ]) {
+      await assert.rejects(provider(async () => { throw failure }).generateMentorInsight({ student: { displayName: 'PRIVATE_STUDENT' } }),
+        { code: 'PROVIDER_UNAVAILABLE' })
+      assert.ok(logs.at(-1).startsWith('Gemini transport failed name='))
+      assert.ok(logs.at(-1).endsWith(`message=${expected}`))
+      assert.doesNotMatch(logs.at(-1), /PRIVATE|https:|key=|Authorization/)
+    }
+  } finally { console.error = original }
+})
+
+test('Gemini transport diagnostic distinguishes timeout and preserves timeout contract', async () => {
+  const logs = [], original = console.error
+  console.error = (...args) => logs.push(args.join(' '))
+  try {
+    await assert.rejects(provider((url, { signal }) => new Promise((resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new Error('PRIVATE timeout details')))
+    })).generateMentorInsight({}), { code: 'PROVIDER_TIMEOUT' })
+    assert.deepEqual(logs, ['Gemini transport failed timeout=true'])
+  } finally { console.error = original }
+})
+
+test('Gemini transport diagnostic does not mislabel HTTP errors or response parsing as transport failure', async () => {
+  const logs = [], original = console.error
+  console.error = (...args) => logs.push(args.join(' '))
+  try {
+    for (const status of [403, 429]) {
+      await assert.rejects(provider(async () => new Response('{}', { status })).generateMentorInsight({}),
+        { code: status === 429 ? 'RATE_LIMITED' : 'PROVIDER_UNAVAILABLE' })
+    }
+    await assert.rejects(provider(async () => new Response('invalid JSON')).generateMentorInsight({}), { code: 'INVALID_AI_OUTPUT' })
+    assert.equal(logs.length, 2)
+    assert.ok(logs.every(line => line.startsWith('Gemini request failed status=')))
+  } finally { console.error = original }
+})
 const geminiResponse = (text = JSON.stringify(output), finishReason = 'STOP') => ({
   candidates: [{ finishReason, content: { parts: [{ text }] } }],
+})
+
+test('Gemini diagnostic logs only safe error fields and preserves 403/429 normalization', async () => {
+  const logs = [], original = console.error
+  console.error = (...args) => logs.push(args.join(' '))
+  try {
+    for (const status of [403, 429]) {
+      const payload = { error: { code: status, status: status === 403 ? 'PERMISSION_DENIED' : 'RESOURCE_EXHAUSTED',
+        message: 'Request cannot be served.\nTry again.', details: { private: 'DO_NOT_LOG' } }, context: 'DO_NOT_LOG' }
+      await assert.rejects(provider(async () => new Response(JSON.stringify(payload), { status })).generateMentorInsight({}),
+        { code: status === 429 ? 'RATE_LIMITED' : 'PROVIDER_UNAVAILABLE' })
+      assert.match(logs.at(-1), new RegExp(`status=${status} code=${status} errorStatus=${payload.error.status}`))
+      assert.match(logs.at(-1), /Request cannot be served\. Try again\./)
+      assert.doesNotMatch(logs.at(-1), /DO_NOT_LOG|\n/)
+    }
+  } finally { console.error = original }
+})
+
+test('Gemini diagnostic redacts echoed keys, headers and personal context; non-JSON bodies stay private', async () => {
+  const logs = [], original = console.error
+  console.error = (...args) => logs.push(args.join(' '))
+  const context = { student: { displayName: 'PRIVATE Student' }, reasons: ['PRIVATE context'] }
+  try {
+    for (const message of ['test', 'Authorization: Bearer PRIVATE_TOKEN', 'x-goog-api-key: PRIVATE_TOKEN',
+      'Invalid PRIVATE Student', 'Invalid PRIVATE%20Student', 'Invalid PRIVATE context']) {
+      await assert.rejects(provider(async () => new Response(JSON.stringify({ error: { code: 403, status: 'PERMISSION_DENIED', message } }),
+        { status: 403 })).generateMentorInsight(context), { code: 'PROVIDER_UNAVAILABLE' })
+      assert.match(logs.at(-1), /redacted/)
+      assert.doesNotMatch(logs.at(-1), /PRIVATE|Bearer|Authorization|test/)
+    }
+    await assert.rejects(provider(async () => new Response('<html>PRIVATE upstream body</html>', { status: 502 }))
+      .generateMentorInsight(context), { code: 'PROVIDER_UNAVAILABLE' })
+    assert.match(logs.at(-1), /status=502 code=unknown/)
+    assert.doesNotMatch(logs.at(-1), /PRIVATE|html/)
+  } finally { console.error = original }
+})
+
+test('Gemini diagnostic unreadable error body keeps 429 rate-limit behavior', async () => {
+  const logs = [], original = console.error
+  console.error = (...args) => logs.push(args.join(' '))
+  try {
+    await assert.rejects(provider(async () => ({ ok: false, status: 429, json: async () => { throw new Error('PRIVATE read error') } }))
+      .generateMentorInsight({}), { code: 'RATE_LIMITED' })
+    assert.match(logs[0], /status=429/)
+    assert.doesNotMatch(logs[0], /PRIVATE/)
+  } finally { console.error = original }
 })
 test('same context with reordered keys has same fingerprint', async () => {
   assert.equal(await ctx.createAIMentorContextFingerprint({ a: 1, b: 2 }), await ctx.createAIMentorContextFingerprint({ b: 2, a: 1 }))
